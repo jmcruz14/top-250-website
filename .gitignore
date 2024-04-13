@@ -1,0 +1,9 @@
+# Python
+projectvenv
+__pycache__
+
+# Shell scripts
+*.sh
+
+# Misc
+.env
