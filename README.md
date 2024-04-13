@@ -1,6 +1,10 @@
 # top-250-website
 Website-hosted dashboard showing analysis of the Top 250 Filipino Movies of all time.
 
+### Planned Stack
+**Back-end**: Python (FastAPI + BeautifulSoup)
+**Front-end**: JS (Nuxt3, Tailwind, and shadcn)
+
 ### Instructions for activating (dev-only)
 1. Save as shell script something like `run_fastapi.sh`.
 2. In `run_fastapi.sh`,
