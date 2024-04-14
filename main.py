@@ -36,15 +36,24 @@ async def root():
   for result in tqdm(results):
     rank_placement = result.find('p', 'list-number').get_text()
     film_poster = result.find('div', 'film-poster')
-    
     name = getFilmName(film_poster)
-    film_metadata_results = getFilmPageContent(lboxd_url + film_poster['data-target-link'])
+
+    response = requests.get(lboxd_url + film_poster['data-target-link'])
+    soup = BeautifulSoup(response.content, 'html.parser')
+    film_metadata_results = getFilmPageContent(soup)
     cast_list = getCastData(film_metadata_results)
     crew_ = getCrewData(film_metadata_results)
-  #   # TODO: extract other metadata
+    genre_ = getGenre(film_metadata_results)
+
+    film_metadata_footer = getFilmPageFooter(soup)
+    runtime_ = getRuntime(film_metadata_footer) 
+    
+    # TODO: extract other metadata
     films.append({
       'film': name,
       'rank': rank_placement,
+      'genre': genre_,
+      'runtime': runtime_,
       'cast': cast_list,
       **crew_
     })
