@@ -13,7 +13,8 @@ from tqdm import tqdm
 # from selenium.webdriver.chrome.options import Options
 # from selenium.webdriver.support.wait import WebDriverWait
 
-from scrape_lboxd import scrapeSoup
+# from scrape_lboxd import scrapeSoup
+from scripts.main import getExtraPages, getFilmName, getFilmPageContent, getCastData, getCrewData
 
 # Saved app variable will be run in the shell script
 app = FastAPI()
@@ -27,47 +28,29 @@ async def root():
   # Run the scraping algorithm in a separate file
   page = requests.get(lboxd_list_link)
   soup = BeautifulSoup(page.content, 'html.parser')
+  pages = getExtraPages(soup)
+  
   results = soup.find_all('li', 'poster-container', limit=1)
 
   films = []
   for result in tqdm(results):
     rank_placement = result.find('p', 'list-number').get_text()
-    film_content = result.find('div', 'film-poster')
+    film_poster = result.find('div', 'film-poster')
     
-    film_page = requests.get(lboxd_url + film_content['data-target-link'])
-    film_page_soup = BeautifulSoup(film_page.content, 'html.parser')
-    film_metadata_results = film_page_soup.find('div', id='tabbed-content')
-    cast_list = [cast.text for cast in film_metadata_results.find('div', 'cast-list').p if cast.text.strip()]
-    # TODO: extract other metadata
-
-    crew_div = film_metadata_results.find('div', '-crewroles')
-    crew_ = {}
-    crewroles = crew_div.find_all('h3')
-    for role in crewroles:
-      print(role)
-      category = role.find('span', ['crewrole', '-full'])
-      category_text = category.text
-      category_sibling = role.find_next_sibling('div')
-      if category_sibling:
-        role_owners = [role_owner.get_text().strip() for role_owner in category_sibling.p if role_owner.text.strip()]
-        crew_[category_text] = role_owners
-      else:
-        crew_[category_text] = None
-
-    # print(film_metadata_results)
-    print(film_metadata_results.find('div', '-crewroles').prettify())
-
+    name = getFilmName(film_poster)
+    film_metadata_results = getFilmPageContent(lboxd_url + film_poster['data-target-link'])
+    cast_list = getCastData(film_metadata_results)
+    crew_ = getCrewData(film_metadata_results)
+  #   # TODO: extract other metadata
     films.append({
-      'film': film_content['data-film-slug'].replace("-", ' ').title(),
+      'film': name,
       'rank': rank_placement,
       'cast': cast_list,
-      'crew': crew_
-      # 'page_content': film_metadata_results.text
+      **crew_
     })
-  # results = soup.find_all('div', 'really-lazy-load')
-  data = scrapeSoup(films)
-  print(data)
-  # print(type(films))
+
+  # data = scrapeSoup(films)
+  # print(data)
 
   return {
     "message": "Hello World",
