@@ -8,3 +8,5 @@ __pycache__
 
 # Misc
 .env
+node_modules/
+.nuxt
