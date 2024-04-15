@@ -1,10 +1,29 @@
 '''Module containing all parsing scripts related to BeautifulSoup objects.'''
 
 import requests
+import json
 from requests.models import Response
-from bs4 import BeautifulSoup, Tag
+from bs4 import BeautifulSoup, Tag, Script
 
 from .strings import replaceMultipleStrings
+
+# class LetterboxdList:
+#   pass
+
+# insert a class object here for easier compact use
+def getFilmId(tag: Tag) -> str | None:
+  try:
+    print(tag, 'TAG')
+    _target = tag.find('div' 'film-watch-link-target')
+    print(_target)
+    return _target['data-film-id']
+  except Exception as e:
+    print(f"Error occurred while parsing film ID: {e}")
+    return None
+
+def getRankPlacement(tag: Tag) -> str:
+  rank = int(tag.find('p', 'list-number').get_text())
+  return rank
 
 def getExtraPages(soup: BeautifulSoup) -> list:
   try:
@@ -28,68 +47,135 @@ def getFilmName(film_poster: Tag) -> str:
   except Exception as e:
     print(f"Error occurred while parsing film name: {e}")
     return ""
+
+class LetterboxdFilmPage:
+  """
+  The Letterboxd film page handles a lazy-loaded DOM when scraped using BeautifulSoup
+  This is different from the DOM shown on inspecting the page via browser.
+
+  The data parsed here pertains to the content seen at the topmost portion
+  of the page, from the film title to the runtime. It does not cover
+  friend activity or reviews.
+
+  Attributes
+  ----------
+  filmHeader: bs4.Tag
+    the film's header element of the Soup object
+  filmBody: bs4.Tag
+    the film's content element of the Soup object
+  filmFooter: bs4.Tag
+    the film's footer element of the Soup object
+
+  Methods
+  ----------
+  getFilmTitle():
+    obtains film title
+  getReleaseYear():
+    obtains film release year
+  getCastData():
+    obtains film cast data
+  getCrewData():
+    obtains crew data
+  getGenre():
+    obtains film genre/s
+  getRuntime():
+    obtains film runtime
+  """
+
+  def __init__(self, soup: BeautifulSoup):
+    self.filmHeader = soup.find('section', id='featured-film-header')
+    self.filmBody = soup.find('div', id='tabbed-content')
+    self.filmFooter = soup.find('p', ['text-link', 'text-footer'])
+    self.contentNav = soup.find('div', id='content-nav')
+
+    self.getScript(soup)
+    # TODO: explore instantiating metadata on initialization
   
-def getFilmPageContent(soup: BeautifulSoup) -> Tag:
-  '''
-  This function processes a request through the returned Response
-  and returns a Tag object that contains the pertinent film metadata
-  for further extraction.
+  def getScript(self, soup):
+    scriptContent = soup.find('script', type='application/ld+json')
 
-  \n
-  NOTE: The script handles a lazy-loaded DOM of the website, which is
-  different from the DOM seen when inspecting the Letterboxd website.
+    # print(soup.find('script'))
 
-  Parameters:
-    response (requests.Response): Returned HTTP request response
+    script = scriptContent.text.split('*/')[1].split('/*')[0]
+    self.script = json.loads(script)
+
+  def getRating(self) -> int|float | None:
+    try:
+      # handle error IF aggregate rating is not found
+      json_script = self.script
+      aggregateRating = json_script['aggregateRating']
+      ratingValue = aggregateRating['ratingValue']
+      return ratingValue
+    except Exception as e:
+      print(f"Error occurred while parsing film title: {e}")
+      return None
+
+  def getFilmTitle(self: Tag) -> str:
+    try:
+      return self.filmHeader.find('h1').get_text()
+    
+    except Exception as e:
+      print(f"Error occurred while parsing film title: {e}")
+      return ''
   
-  Returns:
-    metadata (bs4.Tag): Tag object containing the selected page content
-  '''
-  metadata = soup.find('div', id='tabbed-content')
-  return metadata
-
-def getFilmPageFooter(soup: BeautifulSoup) -> Tag | None:
-  footer = soup.find('p', ['text-link', 'text-footer'])
-  return footer
-
-def getCastData(metadata: Tag) -> list:
-  cast = [cast.text for cast in metadata.find('div', 'cast-list').p if cast.text.strip()]
-  return cast
+  def getProductionCompany(self: Tag) -> list[str]:
+    try:
+      return list(map(lambda x: x['name'], self.script['productionCompany']))
+    except Exception as e:
+      print(f"Error occurred while parsing production company: {e}")
+      return None
   
-def getCrewData(metadata: Tag) -> dict:
-  crew_ = {}
-  crew_div = metadata.find('div', '-crewroles')
-  if crew_div:
-    crewroles = crew_div.find_all('h3')
-    for role in crewroles:
-      category = role.find('span', ['crewrole', '-full'])
-      category_text = category.text
-      category_sibling = role.find_next_sibling('div')
-      if category_sibling:
-        role_owners = [role_owner.get_text().strip() for role_owner in category_sibling.p if role_owner.text.strip()]
-        crew_[category_text] = role_owners
-      else:
-        crew_[category_text] = None
-  return crew_
+  def getReleaseYear(self: Tag) -> int:
+    try:
+      return int(self.filmHeader.find('small', 'number').get_text())
+    
+    except Exception as e:
+      print(f"Error occurred while parsing release year: {e}")
+      return ''
 
-def getGenre(soup: BeautifulSoup) -> list[str]:
-  genres_tab = soup.find('div', {'id':'tab-genres'})
-  genres_list = genres_tab.find_all('a', 'text-slug')
-  genres_ = [genre.get_text().strip() for genre in genres_list]
-  return genres_
+  def getCastData(self: Tag) -> list[str]:
+    try:
+      cast_list = self.filmBody.find('div', 'cast-list').p
+      cast  = [cast.text for cast in cast_list.find_all('a', 'text-slug') if cast.text.strip() or cast.text.strip() != 'Show All…']
+      return cast
+    except Exception as e:
+      print(f"Error occurred while parsing cast members: {e}")
+      return ['']
+  
+  def getCrewData(self: Tag) -> dict:
+    crew_ = {}
+    crew_div = self.filmBody.find('div', '-crewroles')
+    if crew_div:
+      crewroles = crew_div.find_all('h3')
+      for role in crewroles:
+        category = role.find('span', ['crewrole', '-full'])
+        category_text = category.text
+        category_sibling = role.find_next_sibling('div')
+        if category_sibling:
+          role_owners = [role_owner.get_text().strip() for role_owner in category_sibling.p if role_owner.text.strip()]
+          crew_[category_text] = role_owners
+        else:
+          crew_[category_text] = None
+    return crew_
 
-def getRuntime(soup: BeautifulSoup) -> int | None:
-  try:
-    print(soup.text)
-    # genre_text = soup.get_text().strip().replace('\n', '').split(' ')
-    genre_text = [replaceMultipleStrings(char) for char in soup.stripped_strings]
-    print(genre_text)
-    assert 'mins' in genre_text[0]
-    mins_str = genre_text[0]
-    mins_ = int(genre_text[0][:mins_str.index('mins')])
-    print(mins_)
-    return mins_
-    # return genre_text[mins_ - 1]
-  except Exception as e:
-    print(f"Error occurred while parsing runtime: {e}")
-    return None
+  def getGenre(self: Tag) -> list[str]:
+    try:
+      genres_tab = self.filmBody.find('div', {'id':'tab-genres'})
+      genres_list = genres_tab.find_all('a', 'text-slug')
+      genres_ = [genre.get_text().strip() for genre in genres_list]
+      return genres_
+    except Exception as e:
+      print(f"Error occurred while parsing genre: {e}")
+      return ['']
+  
+  def getRuntime(self: Tag) -> int | None:
+    try:
+      genre_text = [replaceMultipleStrings(char) for char in self.filmFooter.stripped_strings]
+      assert 'mins' in genre_text[0]
+      mins_str = genre_text[0]
+      mins_ = int(genre_text[0][:mins_str.index('mins')])
+      return mins_
+      # return genre_text[mins_ - 1]
+    except Exception as e:
+      print(f"Error occurred while parsing runtime: {e}")
+      return None
