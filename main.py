@@ -1,7 +1,7 @@
 
 import json
-from fastapi import FastAPI
-from fastapi.responses import PlainTextResponse
+from fastapi import FastAPI, Request
+from fastapi.responses import PlainTextResponse, RedirectResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from fastapi.middleware.cors import CORSMiddleware
 # import asyncio
@@ -13,7 +13,7 @@ from tqdm import tqdm
 # TODO: serve data thru fastapi -> fetch into vue app on load in router
 
 # from scrape_lboxd import scrapeSoup
-from .scripts.index import getExtraPages, getRankPlacement, getFilmId, LetterboxdFilmPage
+from scripts.index import getExtraPages, getRankPlacement, getFilmId, LetterboxdFilmPage
 
 # Saved app variable will be run in the shell script
 app = FastAPI()
@@ -38,6 +38,14 @@ async def http_exception_handler(request, exc):
 
 # @app.
 
+# Return a Redirect Response for modification
+# FastAPI is a subclass of Starlette
+@app.get('/')
+async def add(request: Request):
+  redirect_url = request.url_for('root')
+  return RedirectResponse(redirect_url)
+
+# FastAPI is by default, returning a JSONResponse object
 @app.get("/main")
 async def root():
   """
