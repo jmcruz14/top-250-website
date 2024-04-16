@@ -1,3 +1,7 @@
+# Node
+node_modules/
+.nuxt
+
 # Python
 projectvenv
 __pycache__
@@ -8,5 +12,3 @@ __pycache__
 
 # Misc
 .env
-node_modules/
-.nuxt
