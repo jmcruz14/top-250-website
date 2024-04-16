@@ -6,6 +6,7 @@ Website-hosted dashboard showing analysis of the Top 250 Filipino Movies of all 
 - Python
     - FastAPI ft. BeautifulSoup
 - (some DB here)
+
 **Front-end**:
 - JS
     - Nuxt3
