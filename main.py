@@ -96,7 +96,7 @@ async def root():
       'runtime': runtime_,
       'cast': cast,
       'production_company': production_company,
-      'content': page.script,
+      # 'content': page.script,
       **crew_,
     })
   
