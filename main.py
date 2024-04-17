@@ -6,14 +6,15 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from fastapi.middleware.cors import CORSMiddleware
 # import asyncio
 import requests
-from bs4 import BeautifulSoup, Script, CData
+from bs4 import BeautifulSoup
 import polars as pl
 from tqdm import tqdm
 
 # TODO: serve data thru fastapi -> fetch into vue app on load in router
 
 # from scrape_lboxd import scrapeSoup
-from scripts.index import getExtraPages, getRankPlacement, getFilmId, LetterboxdFilmPage
+from scripts.index import getExtraPages, getRankPlacement
+from scripts.movie import LetterboxdFilmPage
 
 # Saved app variable will be run in the shell script
 app = FastAPI()
@@ -36,8 +37,6 @@ async def http_exception_handler(request, exc):
   print(f"{repr(exc)}")
   return PlainTextResponse(str(exc.detail), status_code=exc.status_code)
 
-# @app.
-
 # Return a Redirect Response for modification
 # FastAPI is a subclass of Starlette
 @app.get('/')
@@ -49,18 +48,16 @@ async def add(request: Request):
 @app.get("/main")
 async def root():
   """
-    Root function is served when a get request is executed in the main address.
+    This is the main API call function which retrieves the current list data
+    from the list.
   """
 
   # Read URL here
   # Run the scraping algorithm in a separate file
-  # lxml > html.parser
+  # lxml > html.parser in terms of performance
   page = requests.get(lboxd_list_link)
   soup = BeautifulSoup(page.content, 'lxml')
   pages = getExtraPages(soup)
-  
-  # lxml_soup = BeautifulSoup(page.content, 'lxml')
-  # print(lxml_soup)
 
   results = soup.find_all('li', 'poster-container', limit=1)
 
@@ -82,6 +79,7 @@ async def root():
     production_company = page.getProductionCompany()
     genre_ = page.getGenre()
     runtime_ = page.getRuntime()
+
     
     films.append({
       'id': id_,
@@ -89,6 +87,11 @@ async def root():
       'year': release_year,
       'rank': rank_placement,
       'rating': rating,
+      'review_count': page.reviewCount,
+      'rating_count': page.ratingCount,
+      'watch_count': page.watchCount,
+      'list_appearance_count': page.listAppCount,
+      'like_count': page.likeCount,
       'genre': genre_,
       'runtime': runtime_,
       'cast': cast,
@@ -168,5 +171,5 @@ async def root():
 
   # return df
   return {
-    "results": films
+    "data": films
   }
