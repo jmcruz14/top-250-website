@@ -1,0 +1,10 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  font-family: 'Roboto Mono', 'Raleway', 'Lato', Avenir, 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  color: white;
+  @apply bg-gradient-to-r from-green-600 to-emerald-600
+}
+
