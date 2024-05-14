@@ -11,7 +11,7 @@ Website-hosted dashboard showing analysis of the Top 250 Filipino Movies of all 
 - JS
     - Nuxt3
     - Tailwind
-    - shadcn (subject to change)
+    - Radix
 
 ### Instructions for activating (dev-only)
 1. Save as shell script something like `run_fastapi.sh`.
