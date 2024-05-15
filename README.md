@@ -3,9 +3,8 @@ Website-hosted dashboard showing analysis of the Top 250 Filipino Movies of all 
 
 ### Planned Stack
 **Back-end**: 
-- Python
-    - FastAPI ft. BeautifulSoup
-- (some DB here)
+- FastAPI (for API constructions)
+- MongoDB
 
 **Front-end**:
 - JS
@@ -39,8 +38,9 @@ This will allow run_fastapi.sh, which is installed in your project's working fol
 ```
 
 ### Pipeline Model
-DB* -> FastAPI back-end -> Serve JSON data -> Nuxt 3 Front-end
-*locally run in postgres, supported publicly via Vercel
+![](model_flowchart.png)
+
+The back-end consists of an API built using Python's FastAPI and points to the MongoDB database. The front-end is powered via Vue.js (Nuxt) which interacts with the API to retrieve data that will be shown on the front-end.
 
 #### Authors
 Jay Cruz
