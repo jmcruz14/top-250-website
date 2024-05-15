@@ -1,20 +1,20 @@
-
+import os
 import json
 from fastapi import FastAPI, Request
 from fastapi.responses import PlainTextResponse, RedirectResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from fastapi.middleware.cors import CORSMiddleware
-# import asyncio
+
 import requests
+import uuid
 from bs4 import BeautifulSoup
-import polars as pl
 from tqdm import tqdm
+from datetime import datetime
 
-# TODO: serve data thru fastapi -> fetch into vue app on load in router
+from obj.list import LetterboxdList
+from obj.movie import LetterboxdFilmPage
 
-# from scrape_lboxd import scrapeSoup
-from scripts.index import getExtraPages, getRankPlacement
-from scripts.movie import LetterboxdFilmPage
+from scripts.index import getRankPlacement, getExtraPages
 
 # Saved app variable will be run in the shell script
 app = FastAPI()
@@ -25,12 +25,13 @@ app.add_middleware(
   CORSMiddleware,
   allow_origins=origins,
   allow_credentials=True,
-  allow_methods=['*'],
+  allow_methods=['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
   allow_headers=['*'],
 )
 
 lboxd_url = 'https://letterboxd.com'
 lboxd_list_link = 'https://letterboxd.com/tuesjays/list/top-250-narrative-feature-length-filipino/'
+lboxd_list_id = '15294077'
 
 @app.exception_handler(StarletteHTTPException)
 async def http_exception_handler(request, exc):
@@ -48,128 +49,98 @@ async def add(request: Request):
 @app.get("/main")
 async def root():
   """
-    This is the main API call function which retrieves the current list data
-    from the list.
+    This is the main API call function which performs a GET request of the Letterboxd data
+    currently present here.
   """
+
+  history_id = uuid.uuid4()
+  createdAt = datetime.now()
 
   # Read URL here
   # Run the scraping algorithm in a separate file
   # lxml > html.parser in terms of performance
   page = requests.get(lboxd_list_link)
   soup = BeautifulSoup(page.content, 'lxml')
-  pages = getExtraPages(soup)
 
-  results = soup.find_all('li', 'poster-container', limit=1)
+  list_object = LetterboxdList(soup)
+  list_name = list_object.list_name
+  last_update = list_object.last_update
+  total_pages = list_object.total_pages
+
+  # FLAGS
+  get_stats_data = False
+  get_extra_pages = True
+
+  # list_text = soup
+  pages = getExtraPages(soup)
+  results = soup.find_all('li', 'poster-container')
 
   films = []
+  
+  # Change this to: GET MOVIE IF ENABLED
   for result in tqdm(results):
     rank_placement = getRankPlacement(result)
     film_poster = result.find('div', 'film-poster')
     id_ = film_poster['data-film-id']
 
-    response = requests.get(lboxd_url + film_poster['data-target-link'])
-    soup = BeautifulSoup(response.content, 'lxml')
-
-    page = LetterboxdFilmPage(soup)
-    name = page.getFilmTitle()
-    rating = page.getRating()
-    release_year = page.getReleaseYear()
-    cast = page.getCastData()
-    crew_ = page.getCrewData()
-    production_company = page.getProductionCompany()
-    genre_ = page.getGenre()
-    runtime_ = page.getRuntime()
-
-    
-    films.append({
-      'id': id_,
-      'film': name,
-      'year': release_year,
+    film = {
       'rank': rank_placement,
-      'rating': rating,
-      'review_count': page.reviewCount,
-      'rating_count': page.ratingCount,
-      'watch_count': page.watchCount,
-      'list_appearance_count': page.listAppCount,
-      'like_count': page.likeCount,
-      'genre': genre_,
-      'runtime': runtime_,
-      'cast': cast,
-      'production_company': production_company,
+      'id_': id_,
       # 'content': page.script,
-      **crew_,
-    })
-  
-  # if pages:
-  #   for page in pages:
-  #     html_page = requests.get(lboxd_url + page)
-  #     soup = BeautifulSoup(html_page.content, 'lxml')
-  #     results = soup.find_all('li', 'poster-container')
-  #     for result in tqdm(results):
-  #       rank_placement = getRankPlacement(result)
-  #       film_poster = result.find('div', 'film-poster')
+    }
 
-  #       response = requests.get(lboxd_url + film_poster['data-target-link'])
-  #       soup = BeautifulSoup(response.content, 'lxml')
+    # update flag to: if film_id is not found in the repo
+    if get_stats_data:
+      response = requests.get(lboxd_url + film_poster['data-target-link'])
+      soup = BeautifulSoup(response.content, 'lxml')
+      page = LetterboxdFilmPage(soup)
+      film_data = page.getAllStats()
 
-  #       page = LetterboxdFilmPage(soup)
-  #       name = page.getFilmTitle()
-  #       rating = page.getRating()
-  #       release_year = page.getReleaseYear()
-  #       cast = page.getCastData()
-  #       crew_ = page.getCrewData()
-  #       production_company = page.getProductionCompany()
-  #       genre_ = page.getGenre()
-  #       runtime_ = page.getRuntime()
-        
-  #       films.append({
-  #         'film': name,
-  #         'year': release_year,
-  #         'rank': rank_placement,
-  #         'rating': rating,
-  #         'genre': genre_,
-  #         'runtime': runtime_,
-  #         'cast': cast,
-  #         'production_company': production_company,
-  #         'content': page.script,
-  #         **crew_,
-  #       })
+      film = {
+        **film,
+        **film_data
+      }
+    
+    # page.validate_model(film)
 
+    films.append(film)
 
-  # if pages:
-  #   for page in pages:
-  #     html_page = requests.get(lboxd_url + page)
-  #     soup = BeautifulSoup(html_page.content, 'lxml')
-  #     results = soup.find_all('li', 'poster-container')
-  # data = scrapeSoup(films)
-  # print(data)
-  # if pages:
-  #   for page in pages:
-  #     html_page = requests.get(lboxd_url + page)
-  #     soup = BeautifulSoup(html_page.content, 'lxml')
-  #     results = soup.find_all('li', 'poster-container')
-  #     for result in tqdm(results):
-  #       rank_placement = result.find('p', 'list-number').get_text()
-  #       film_poster = result.find('div', 'film-poster')
-        
-  #       name = getFilmName(film_poster)
-  #       film_metadata_results = getFilmPageContent(lboxd_url + film_poster['data-target-link'])
-  #       cast_list = getCastData(film_metadata_results)
-  #       crew_ = getCrewData(film_metadata_results)
-        
-  #       # TODO: extract other metadata
-  #       films.append({
-  #         'rank': rank_placement,
-  #         'film': name,
-  #         'cast': cast_list,
-  #         **crew_ 
-  #       })
-  
-  # TODO: put in separate file for further flexibility
-  # df = pl.DataFrame(films)
-  # df.write_excel("top_250_saved_file.xlsx")
+  if pages and get_extra_pages:
+    print(pages, 'page-count')
+    for page in pages:
+      html_page = requests.get(lboxd_url + page)
+      soup = BeautifulSoup(html_page.content, 'lxml')
+      results = soup.find_all('li', 'poster-container')
+      for result in tqdm(results):
+        rank_placement = getRankPlacement(result)
+        film_poster = result.find('div', 'film-poster')
+        id_ = film_poster['data-film-id']
 
-  # return df
+        film = {
+          'rank': rank_placement,
+          'id_': id_,
+          # 'content': page.script,
+        }
+
+        if get_stats_data:
+          response = requests.get(lboxd_url + film_poster['data-target-link'])
+          soup = BeautifulSoup(response.content, 'lxml')
+          page = LetterboxdFilmPage(soup)
+          film_data = page.getAllStats()
+
+          film = {
+            **film,
+            **film_data
+          }
+        films.append(film)
+
   return {
-    "data": films
+    "id_": history_id,
+    "list_id": lboxd_list_id,
+    "list_name": list_name,
+    "total_pages": total_pages,
+    "data": films,
+    "last_update": last_update,
+    "created_at": createdAt,
+    # "content": str(list_text)
   }
