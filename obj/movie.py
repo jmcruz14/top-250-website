@@ -2,11 +2,14 @@ import json
 import requests
 import re
 from bs4 import BeautifulSoup, Tag
+from pydantic import ValidationError
 
-from .strings import not_numeric, replaceMultipleStrings
-# from .url import fetchStatsUrl
+from models.movie_data import Movie
 
-from constants.url import fetchStatsUrl
+from scripts.rating import get_classic_histogram_rating
+from scripts.strings import not_numeric, replaceMultipleStrings
+
+from constants.url import fetchStatsUrl, fetchRatingHistogramUrl
 
 class LetterboxdFilmPage:
   """
@@ -43,35 +46,45 @@ class LetterboxdFilmPage:
   """
 
   def __init__(self, soup: BeautifulSoup):
-    self.filmHeader = soup.find('section', id='featured-film-header')
+    self.filmHeader = soup.find('section', ['film-header-group'])
     self.filmBody = soup.find('div', id='tabbed-content')
     self.filmFooter = soup.find('p', ['text-link', 'text-footer'])
     self.contentNav = soup.find('div', id='content-nav')
+    self.soup = soup
     # print(soup)
 
-    self.getScript(soup)
-    self.film_id = self.script['url'].split('/')[4]
-    self.getStats(self.film_id)
-    self.getReviewCount()
-    self.getRatingCount()
+    # self.getScript(soup)
+    # self.film_slug = self.script['url'].split('/')[4]
+    # self.getStats(self.film_slug)
+    # self.getReviewCount()
+    # self.getRatingCount()
+    # self.getClassicRating()
     # TODO: explore instantiating metadata on initialization
+
+    # get pertinent data if enabled
   
   def getScript(self, soup):
     scriptContent = soup.find('script', type='application/ld+json')
     script = scriptContent.text.split('*/')[1].split('/*')[0]
     self.script = json.loads(script)
   
-  def getStats(self, film_id: str):
+  def getStats(self, film_slug: str):
     '''
       The stats data is retrieved from a different endpoint (/csi/film/{movie}/stats)
       before it is loaded onto the resulting page. 
     '''
-    self.statsUrl = fetchStatsUrl(film_id)
+    self.statsUrl = fetchStatsUrl(film_slug)
     statsRequest = requests.get(self.statsUrl)
     statsSoup = BeautifulSoup(statsRequest.content, 'lxml')
     self.watchCount = int(re.sub(not_numeric, '', statsSoup.find('li', 'filmstat-watches').a.get('title')))
     self.listAppCount = int(re.sub(not_numeric, '', statsSoup.find('li', 'filmstat-lists').a.get('title')))
     self.likeCount = int(re.sub(not_numeric, '', statsSoup.find('li', 'filmstat-likes').a.get('title')))
+
+    return {
+      'watch_count': self.watchCount,
+      'list_appearance_count': self.listAppCount,
+      'like_count': self.likeCount,
+    }
 
   def getRating(self) -> int|float | None:
     try:
@@ -89,15 +102,28 @@ class LetterboxdFilmPage:
       print(f"Error occurred while parsing rating: {e}")
       return None
   
+  def getClassicRating(self) -> int|float | None:
+    try:
+      hist_url = fetchRatingHistogramUrl(self.film_slug)
+      histRequest = requests.get(hist_url)
+      histSoup = BeautifulSoup(histRequest.content, 'lxml')
+      histogram_rating = get_classic_histogram_rating(histSoup)
+      
+      return histogram_rating
+    except Exception as e:
+      print(f"Error occurred while parsing histogram rating: {e}")
+      return None
+  
   def getReviewCount(self) -> None:
     try:
       json_script = self.script
       aggregateRating = json_script['aggregateRating']
       reviewCount = aggregateRating['reviewCount']
-      self.reviewCount = reviewCount
+      return reviewCount
     except Exception as e:
       print(f"Error occurred while parsing review count: {e}")
-      self.reviewCount = None
+      reviewCount = None
+      return reviewCount
 
   def getRatingCount(self) -> None:
     try:
@@ -105,10 +131,13 @@ class LetterboxdFilmPage:
       json_script = self.script
       aggregateRating = json_script['aggregateRating']
       ratingCount = aggregateRating['ratingCount']
-      self.ratingCount = ratingCount
+
+      return ratingCount
     except Exception as e:
       print(f"Error occurred while parsing rating count: {e}")
-      self.ratingCount = None
+      ratingCount = None
+      
+      return ratingCount
 
   def getFilmTitle(self: Tag) -> str:
     try:
@@ -127,7 +156,9 @@ class LetterboxdFilmPage:
   
   def getReleaseYear(self: Tag) -> int:
     try:
-      return int(self.filmHeader.find('small', 'number').get_text())
+      elem = self.filmHeader.find('div', ['releaseyear'])
+      year = int(elem.text) if elem else None
+      return year
     
     except Exception as e:
       print(f"Error occurred while parsing release year: {e}")
@@ -149,7 +180,7 @@ class LetterboxdFilmPage:
       crewroles = crew_div.find_all('h3')
       for role in crewroles:
         category = role.find('span', ['crewrole', '-full'])
-        category_text = category.text
+        category_text = category.text.replace(' ', '_').lower()
         category_sibling = role.find_next_sibling('div')
         if category_sibling:
           role_owners = [role_owner.get_text().strip() for role_owner in category_sibling.p if role_owner.text.strip()]
@@ -179,6 +210,46 @@ class LetterboxdFilmPage:
     except Exception as e:
       print(f"Error occurred while parsing runtime: {e}")
       return None
+  
+  def getAllStats(self):
+    self.getScript(self.soup)
+    self.film_slug = self.script['url'].split('/')[4]
+    self.film_title = self.getFilmTitle()
+    self.production_company = self.getProductionCompany()
+    self.release_year = self.getReleaseYear()
+    self.genres = self.getGenre()
+    self.cast = self.getCastData()
+    self.crew = self.getCrewData()
+    self.rating = self.getRating()
+    self.classic_rating = self.getClassicRating()
+    self.stats_data = self.getStats(self.film_slug)
+    self.review_count = self.getReviewCount()
+    self.rating_count = self.getRatingCount()
+    self.runtime = self.getRuntime()
+
+    return {
+      'film_slug': self.film_slug,
+      'film_title': self.film_title,
+      'year': self.release_year,
+      'rating': self.rating,
+      'classic_rating': self.classic_rating,
+      'review_count': self.review_count,
+      'rating_count': self.rating_count,
+      **self.stats_data,
+      'genre': self.genres,
+      'runtime': self.runtime,
+      'cast': self.cast,
+      'production_company': self.production_company,
+      **self.crew,
+    }
+  
+  def validate_model(self, dict):
+    json_model = json.dumps(dict)
+    try:
+      instance = Movie.model_validate_json(json_model)
+      assert instance
+    except ValidationError as e:
+      print("Validation failed", e)
 
 if __loader__.name == '__main__':
     import sys
