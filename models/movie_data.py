@@ -2,7 +2,7 @@ from pydantic import BaseModel
 from typing import Optional
 
 class Movie(BaseModel):
-  id_: str
+  film_id: str
   film_slug: str
   film_title: str
   year: int
@@ -25,4 +25,5 @@ class Movie(BaseModel):
   production_design: Optional[list[str]] = None
   art_direction: Optional[list[str]] = None
   sound: Optional[list[str]] = None
+  # poster: Optional[str] = None
 

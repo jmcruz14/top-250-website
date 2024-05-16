@@ -4,7 +4,7 @@ from pydantic import BaseModel
 from movie_data import Movie
 
 class ListHistory(BaseModel):
-  id_: UUID
+  history_id: UUID
   list_name: str
   total_pages: int
   data: list[Movie]

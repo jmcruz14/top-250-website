@@ -8,9 +8,7 @@ from bs4 import BeautifulSoup, Tag
 # insert a class object here for easier compact use
 def getFilmId(tag: Tag) -> str | None:
 	try:
-		print(tag, 'TAG')
 		_target = tag.find('div' 'film-watch-link-target')
-		print(_target)
 		return _target['data-film-id']
 	except Exception as e:
 		print(f"Error occurred while parsing film ID: {e}")
