@@ -1,11 +1,11 @@
 from datetime import datetime
 from bs4 import BeautifulSoup
-from scripts.utils import convert_to_asia_tz
+from scripts.utils import convert_to_dt
 
 class LetterboxdList:
 	def __init__(self, soup: BeautifulSoup) -> None:
 		self.list_name = self.getListName(soup)
-		self.get_publish_date = self.getPublishDate(soup)
+		self.publish_date = self.getPublishDate(soup)
 		self.last_update = self.getLastUpdate(soup)
 		self.total_pages = self.getTotalPages(soup)
 	
@@ -22,7 +22,7 @@ class LetterboxdList:
 			publish_tag = soup.find('span', 'published')
 			publish_time = publish_tag.find('time')
 			publish_date = publish_time.get('datetime')
-			publish_date = convert_to_asia_tz(publish_date)
+			publish_date = convert_to_dt(publish_date)
 		except Exception:
 			publish_date = None
 		return publish_date
@@ -32,7 +32,7 @@ class LetterboxdList:
 			update_tag = soup.find('span', 'updated')
 			update_time = update_tag.find('time')
 			last_update = update_time.get('datetime')
-			last_update = convert_to_asia_tz(last_update)
+			last_update = convert_to_dt(last_update)
 		except Exception:
 			last_update = None
 		return last_update

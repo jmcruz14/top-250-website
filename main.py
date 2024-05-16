@@ -9,12 +9,13 @@ import requests
 import uuid
 from bs4 import BeautifulSoup
 from tqdm import tqdm
-from datetime import datetime
+from datetime import datetime, timezone
 
 from obj.list import LetterboxdList
 from obj.movie import LetterboxdFilmPage
 
 from scripts.index import getRankPlacement, getExtraPages
+from scripts.utils import strip_tz
 
 # Saved app variable will be run in the shell script
 app = FastAPI()
@@ -25,7 +26,7 @@ app.add_middleware(
   CORSMiddleware,
   allow_origins=origins,
   allow_credentials=True,
-  allow_methods=['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
+  allow_methods=['*'],
   allow_headers=['*'],
 )
 
@@ -54,7 +55,7 @@ async def root():
   """
 
   history_id = uuid.uuid4()
-  createdAt = datetime.now()
+  created_at = strip_tz(datetime.now(timezone.utc))
 
   # Read URL here
   # Run the scraping algorithm in a separate file
@@ -64,16 +65,19 @@ async def root():
 
   list_object = LetterboxdList(soup)
   list_name = list_object.list_name
+  publish_date = list_object.publish_date
   last_update = list_object.last_update
   total_pages = list_object.total_pages
 
   # FLAGS
   get_stats_data = False
-  get_extra_pages = True
+  get_extra_pages = False
+  page_limit = 1
+  # page_limit = None
 
   # list_text = soup
   pages = getExtraPages(soup)
-  results = soup.find_all('li', 'poster-container')
+  results = soup.find_all('li', 'poster-container', limit=page_limit)
 
   films = []
   
@@ -140,7 +144,8 @@ async def root():
     "list_name": list_name,
     "total_pages": total_pages,
     "data": films,
+    "publish_date": publish_date,
     "last_update": last_update,
-    "created_at": createdAt,
+    "created_at": created_at
     # "content": str(list_text)
   }
