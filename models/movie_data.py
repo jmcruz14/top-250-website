@@ -1,20 +1,31 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional
 
 class Movie(BaseModel):
-  film_id: str
-  film_slug: str
-  film_title: str
-  year: int
+  film_id: str | None = Field(
+    default=None,
+    title="film numerical id extracted from parent list",
+    examples=["111490"]
+    )
+  film_slug: str | None = Field(
+    default=None,
+    title="film_title denoted in snake_case form",
+    examples=["v-for-vendetta"]
+  )
+  film_title: str | None = Field(
+    default=None,
+    title="film title without any string manipulations"
+  )
+  year: Optional[int] = None
   rating: Optional[float] = None
   classic_rating: Optional[float] = None
-  review_count: int
-  rating_count: int
-  watch_count: int
-  list_appearance_count: int
-  like_count: int
+  review_count: Optional[int] = None
+  rating_count: Optional[int] = None
+  watch_count: Optional[int] = None
+  list_appearance_count: Optional[int] = None
+  like_count: Optional[int] = None
   genre: Optional[list[str]] = None
-  runtime: int
+  runtime: Optional[int] = None
   cast: Optional[list[str]] = None
   production_company: Optional[list[str]] = None
   director: Optional[list[str]] = None

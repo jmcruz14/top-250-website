@@ -1,5 +1,6 @@
 import os
 import pprint
+import json
 import certifi
 import asyncio
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -27,24 +28,22 @@ async def connect_server() -> AsyncIOMotorClient | None:
     print('Error detected:', e)
   return None
 
-async def query_db(query, collection):
-  client = await connect_server() # RuntimeWarning: coroutine was never awaited -- attach await to async func
+async def query_db(client, query, collection, limit: int = 1):
+  # client = await connect_server() # RuntimeWarning: coroutine was never awaited -- attach await to async func
   # NOTE: solve error for runtime warning: enable tracemalloc to get object allocation traceback
   db = client.get_database(LBOXD_COLLECTION)
   collection = db.get_collection(collection)
-  documents = await collection.find(query).to_list(None)
+  documents = await collection.find(query).to_list(limit)
   obj = [doc for doc in documents]
   # client.close()
   return obj
 
+async def update_db(client, document, collection):
+  db = client.get_database(LBOXD_COLLECTION)
+  collection = db.get_collection(collection)
+  collection.insert_one(document)
+  print('Document has been added!')
 
-async def update_db(document, collection):
-	client = await connect_server()
-	db = client.get_database(LBOXD_COLLECTION)
-	collection = db.get_collection(collection)
-	collection.insert_one(document)
-	print('Document has been added!')
-	# client.close()
 
 if __name__ == '__main__':
    asyncio.run(connect_server())
