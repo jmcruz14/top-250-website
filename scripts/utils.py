@@ -1,5 +1,27 @@
 import re
+from uuid import UUID
+from base64 import b64encode
+from bson import Binary
 from datetime import datetime, timezone
+from typing import Iterable
+from pydantic import BaseModel, create_model
+
+def merge_base_models(name: str, *models: Iterable[BaseModel]) -> BaseModel:
+  fields = {}
+  for model in models:
+        f = {k: (v.annotation, v) for k, v in model.model_fields.items()}
+        fields.update(f)
+  return create_model(name, **fields)
+
+def convert_to_serializable(d):
+  for key, value in d.items():
+    if isinstance(value, Binary) and key == '_id':
+        uuid_obj = UUID(bytes=value)
+        d[key] = str(uuid_obj)
+    elif isinstance(value, Binary) and key != '_id':
+        d[key] = b64encode(value).decode('utf-8')
+  return d
+
 
 def extract_numeric_text(tag) -> int:
   try:

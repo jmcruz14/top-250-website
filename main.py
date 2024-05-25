@@ -46,6 +46,15 @@ async def add(request: Request):
   redirect_url = request.url_for('root')
   return RedirectResponse(redirect_url)
 
+@app.get('/movie/{film_slug}', tags=['movie'], summary="Fetch movie from db")
+def fetch_movie(film_slug: str):
+  # TODO: return movie entry here
+  return { 'movie-to-scrape': film_slug }
+
+@app.patch('/movie/{film_slug}', response_model=None, tags=['movie'], summary="Patch existing film from DB")
+def update_movie(film_slug: str):
+  # TODO: update movie metadata here
+  return 
 # FastAPI is by default, returning a JSONResponse object
 @app.get("/main")
 async def root():
