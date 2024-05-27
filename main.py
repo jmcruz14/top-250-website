@@ -176,8 +176,11 @@ async def scrape_letterboxd_list(
   return list_history
 
 @app.get('/movie/fetch/{id}', tags=['movie'], summary="Fetch movie in db")
-async def fetch_movie(id: int):
-  client = await connect_server()
+async def fetch_movie(id: int | str, client: Any | None):
+  try:
+    client.admin.command('ping')
+  except Exception:
+    client = await connect_server()
   query = { '_id': { '$eq': str(id) }}
   movie_data = await query_db(client, query, 'movie')
   return movie_data[0]
@@ -213,12 +216,32 @@ def update_movie(film_slug: str):
   return 
 
 @app.get('/list-history', tags=['letterboxd-list'], summary="Fetch stored list-history item")
-async def parse_list(id: int, client: Any | None = None):
+async def parse_list(id: int, client: Any | None = None, fetch_movies: bool = False):
   try:
     client.admin.command('ping')
-  except ConnectionFailure:
+  except Exception:
     client = await connect_server()
   query = { 'list_id': { '$eq': str(id) } }
   list_history = await query_db(client, query, 'list_history', 1)
   results = convert_to_serializable(list_history[0])
+  
+  if fetch_movies:
+    data = results['data']
+    tasks = [
+      show_full_data(film, client) for film in data
+    ]
+    updated_films = await asyncio.gather(*tasks)
+    results = updated_films
   return results
+
+async def show_full_data(film, client):
+  film_data = await fetch_movie(film['film_id'], client)
+  try:
+    del film_data['_id']
+  except KeyError:
+    pass
+  updated_film = {
+    **film,
+    **film_data
+  }
+  return updated_film
