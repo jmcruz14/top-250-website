@@ -1,5 +1,10 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
+  runtimeConfig: {
+    public: {
+      apiUrl: 'http://127.0.0.1:8000'
+    },
+  },
   preset: 'node-server',
   devtools: { enabled: true },
   ssr: true,

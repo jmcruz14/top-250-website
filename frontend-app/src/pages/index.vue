@@ -6,7 +6,9 @@
 </template>
 
 <script>
-import { definePageMeta, useSeoMeta } from '#imports'
+import { definePageMeta, useSeoMeta, useFetch, useRuntimeConfig } from '#imports'
+import { onMounted, ref } from 'vue'
+import { fetchListHistory } from '~/composables/useListHistory'
 import TestGraph from '@/components/TestGraph'
 // import ... from 'd3'
 
@@ -15,11 +17,19 @@ export default {
     TestGraph
   },
   setup () {
-    definePageMeta({ layouts: 'Generic '})
+    definePageMeta({ layouts: 'Generic' })
     useSeoMeta({
       title: 'Top 250 Dashboard',
       description: 'Front-end dashboard for the Letterboxd Top 250 Filipino list',
     })
+
+    const runtimeConfig = useRuntimeConfig()
+    const response = ref(null)
+    onMounted(async () => {
+        response.value = await fetchListHistory(15294077, true)
+        console.warn('response-val', response.value)
+      }
+    )
   }
 }
 
