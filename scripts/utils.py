@@ -22,6 +22,19 @@ def convert_to_serializable(d):
         d[key] = b64encode(value).decode('utf-8')
   return d
 
+def strip_descriptive_stats(movie_obj: dict) -> dict:
+   obj_no_stats = {
+      x: movie_obj[x] for x in movie_obj if x not in [
+         'rating', 
+         'classic_rating', 
+         'review_count',
+         'rating_count',
+         'watch_count',
+         'list_appearance_count',
+         'like_count'
+        ]
+   }
+   return obj_no_stats
 
 def extract_numeric_text(tag) -> int:
   try:

@@ -28,7 +28,7 @@ async def connect_server() -> AsyncIOMotorClient | None:
     print('Error detected:', e)
   return None
 
-async def query_db(client, query, collection, limit: int = 1):
+async def query_db(client, query, collection, limit: int = 1) -> list:
   # client = await connect_server() # RuntimeWarning: coroutine was never awaited -- attach await to async func
   # NOTE: solve error for runtime warning: enable tracemalloc to get object allocation traceback
   db = client.get_database(LBOXD_COLLECTION)
@@ -44,6 +44,17 @@ async def update_db(client, document, collection):
   collection.insert_one(document)
   print('Document has been added!')
 
+async def delete_docs(client, query: dict, collection, single: bool):
+  db = client.get_database(LBOXD_COLLECTION)
+  collection_name = collection
+  collection = db.get_collection(collection)
+  if single:
+    count_ = 1
+    await collection.delete_one(query)
+  else:
+    res = await collection.delete_many(query)
+    count_ = res.deleted_count
+  print(f'{count_} documents have been deleted from {collection_name}!')
 
 if __name__ == '__main__':
    asyncio.run(connect_server())

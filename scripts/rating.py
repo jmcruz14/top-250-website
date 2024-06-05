@@ -15,11 +15,6 @@ rating_conversion = {
 }
 
 def get_classic_histogram_rating(hist_dom) -> int:
-  # NOTE: the rating algorithm is estimated based
-  # on prior handling of films before the algorithm update of June 2023
-  # was incorporated
-
-  # print(hist_dom)
   all_rating_el = hist_dom.find_all('li', 'rating-histogram-bar')
   RATING_COUNT_THRESHOLD = 40
   review_count = 0

@@ -52,13 +52,6 @@ class LetterboxdFilmPage:
     self.contentNav = soup.find('div', id='content-nav')
     self.soup = soup
     # print(soup)
-
-    # self.getScript(soup)
-    # self.film_slug = self.script['url'].split('/')[4]
-    # self.getStats(self.film_slug)
-    # self.getReviewCount()
-    # self.getRatingCount()
-    # self.getClassicRating()
     # TODO: explore instantiating metadata on initialization
 
     # get pertinent data if enabled
@@ -190,9 +183,13 @@ class LetterboxdFilmPage:
     return crew_
 
   def getGenre(self: Tag) -> list[str]:
+
+    def genre_filter(tag):
+      return tag.name == 'a' and 'text-slug' in tag.get('class', []) and tag.get('href').startswith('/films/genre')
+
     try:
       genres_tab = self.filmBody.find('div', {'id':'tab-genres'})
-      genres_list = genres_tab.find_all('a', 'text-slug')
+      genres_list = genres_tab.find_all(genre_filter)
       genres_ = [genre.get_text().strip() for genre in genres_list]
       return genres_
     except Exception as e:

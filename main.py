@@ -1,5 +1,6 @@
 import os
 import json
+import asyncio
 from typing import Annotated, Any
 from fastapi import FastAPI, Request, Body
 from fastapi.encoders import jsonable_encoder
@@ -20,9 +21,9 @@ from obj.list import LetterboxdList
 from obj.movie import LetterboxdFilmPage
 
 from scripts.index import getRankPlacement, getExtraPages
-from scripts.utils import strip_tz, convert_to_serializable
+from scripts.utils import strip_tz, convert_to_serializable, strip_descriptive_stats
 
-from dbconnect import connect_server, query_db, update_db
+from dbconnect import connect_server, query_db, update_db, delete_docs
 
 # Saved app variable will be run in the shell script
 app = FastAPI()
@@ -62,8 +63,7 @@ async def add(request: Request, status_code=300):
 async def scrape_letterboxd_list(
   list_slug: str,
   parse_extra_pages: bool = True,
-  film_parse_limit: int = None,
-  save_scrape: bool = False
+  film_parse_limit: int = None
 ):
   '''
     Performs a webscraping function to extract data from lazy-loaded DOM
@@ -74,6 +74,7 @@ async def scrape_letterboxd_list(
   created_at = strip_tz(datetime.now(timezone.utc))
   page = requests.get(lboxd_list_link)
   soup = BeautifulSoup(page.content, 'lxml')
+  save_scrape = False
 
   list_object = LetterboxdList(soup)
   list_name = list_object.list_name
@@ -88,10 +89,12 @@ async def scrape_letterboxd_list(
   list_entry_date = list_entry['last_update']
   if list_entry_date == last_update:
     return jsonable_encoder(list_entry)
+  else:
+    save_scrape = True
 
   films = []
   
-  for result in tqdm(results):
+  for result in results:
     rank_placement = getRankPlacement(result)
     film_poster = result.find('div', 'film-poster')
     film_id = film_poster['data-film-id']
@@ -109,8 +112,52 @@ async def scrape_letterboxd_list(
       print(f"New film detected in list! Parsing film_id: {film_id}")
       result = scrape_movie(film_slug, film_id)
       film_data = result['data']
+      film_numerical_stats = {
+        'rating': film_data['rating'] if 'rating' in film_data else None,
+        'classic_rating': film_data['classic_rating'] if 'classic_rating' in film_data else None,
+        'review_count': film_data['review_count'] if 'review_count' in film_data else None,
+        'rating_count': film_data['rating_count'] if 'rating_count' in film_data else None,
+        'watch_count': film_data['watch_count'] if 'watch_count' in film_data else None,
+        'list_appearance_count': film_data['list_appearance_count'] if 'list_appearance_count' in film_data else None,
+        'like_count': film_data['like_count'] if 'like_count' in film_data else None,
+      }
+
+      movie_history_id = uuid.uuid4()
+      movie_history_created_at = strip_tz(datetime.now(timezone.utc))
+      movie_history = {
+        **film_data,
+        '_id': Binary.from_uuid(movie_history_id),
+        'list_id': history_id,
+        'film_id': film_id,
+        'created_at': movie_history_created_at,
+      }
+      await update_db(client, movie_history, 'movie_history')
       
-      await update_db(client, film_data, 'movie')
+      movie = strip_descriptive_stats(film_data)
+      await update_db(client, movie, 'movie')
+
+      film = {
+        **film,
+        **film_numerical_stats
+      }
+    else:
+      movie_history_query = { 'film_id': { '$eq': film_id }}
+      latest_film = await query_db(client, movie_history_query, 'movie_history')
+      film_data = latest_film[0]
+      film_numerical_stats = {
+        'rating': film_data['rating'] if 'rating' in film_data else None,
+        'classic_rating': film_data['classic_rating'] if 'classic_rating' in film_data else None,
+        'review_count': film_data['review_count'] if 'review_count' in film_data else None,
+        'rating_count': film_data['rating_count'] if 'rating_count' in film_data else None,
+        'watch_count': film_data['watch_count'] if 'watch_count' in film_data else None,
+        'list_appearance_count': film_data['list_appearance_count'] if 'list_appearance_count' in film_data else None,
+        'like_count': film_data['like_count'] if 'like_count' in film_data else None,
+      }
+      film = {
+        **film,
+        **film_numerical_stats
+      }
+
     films.append(film)
 
   if pages and parse_extra_pages:
@@ -118,7 +165,7 @@ async def scrape_letterboxd_list(
       html_page = requests.get(lboxd_url + page)
       soup = BeautifulSoup(html_page.content, 'lxml')
       results = soup.find_all('li', 'poster-container', limit=film_parse_limit)
-      for result in tqdm(results):
+      for result in results:
         rank_placement = getRankPlacement(result)
         film_poster = result.find('div', 'film-poster')
         film_id = film_poster['data-film-id']
@@ -133,19 +180,53 @@ async def scrape_letterboxd_list(
         film_in_db = await query_db(client, query, 'movie')
         if not film_in_db:
           print(f"New film detected in list! Parsing film_id: {film_id}")
-          response = requests.get(lboxd_url + film_poster['data-target-link'])
-          soup = BeautifulSoup(response.content, 'lxml')
-          page = LetterboxdFilmPage(soup)
-          film_data = page.getAllStats()
-          new_film = {
-            'film_id': film_id,
-            **film_data
+          result = scrape_movie(film_slug, film_id)
+          film_data = result['data']
+          film_numerical_stats = {
+            'rating': film_data['rating'] if 'rating' in film_data else None,
+            'classic_rating': film_data['classic_rating'] if 'classic_rating' in film_data else None,
+            'review_count': film_data['review_count'] if 'review_count' in film_data else None,
+            'rating_count': film_data['rating_count'] if 'rating_count' in film_data else None,
+            'watch_count': film_data['watch_count'] if 'watch_count' in film_data else None,
+            'list_appearance_count': film_data['list_appearance_count'] if 'list_appearance_count' in film_data else None,
+            'like_count': film_data['like_count'] if 'like_count' in film_data else None,
           }
-          # NOTE: study validation of models before parsing
-          page.validate_model(new_film) 
-          
-          await update_db(client, new_film, 'movie')
 
+          movie_history_id = uuid.uuid4()
+          movie_history_created_at = strip_tz(datetime.now(timezone.utc))
+          movie_history = {
+            **film_data,
+            '_id': Binary.from_uuid(movie_history_id),
+            'film_id': film_id,
+            'created_at': movie_history_created_at,
+          }
+          await update_db(client, movie_history, 'movie_history')
+
+          movie = strip_descriptive_stats(film_data)
+          await update_db(client, movie, 'movie')
+          
+          film = {
+            **film,
+            **film_numerical_stats
+          }
+        else:
+          movie_history_query = { 'film_id': { '$eq': film_id }}
+          latest_film = await query_db(client, movie_history_query, 'movie_history')
+          film_data = latest_film[0]
+          film_numerical_stats = {
+            'rating': film_data['rating'] if 'rating' in film_data else None,
+            'classic_rating': film_data['classic_rating'] if 'classic_rating' in film_data else None,
+            'review_count': film_data['review_count'] if 'review_count' in film_data else None,
+            'rating_count': film_data['rating_count'] if 'rating_count' in film_data else None,
+            'watch_count': film_data['watch_count'] if 'watch_count' in film_data else None,
+            'list_appearance_count': film_data['list_appearance_count'] if 'list_appearance_count' in film_data else None,
+            'like_count': film_data['like_count'] if 'like_count' in film_data else None,
+          }
+          film = {
+            **film,
+            **film_numerical_stats
+          }
+        
         films.append(film)
   
   list_history = {
@@ -176,7 +257,7 @@ async def scrape_letterboxd_list(
   return list_history
 
 @app.get('/movie/fetch/{id}', tags=['movie'], summary="Fetch movie in db")
-async def fetch_movie(id: int | str, client: Any | None):
+async def fetch_movie(id: int | str, client: Any | None = None):
   try:
     client.admin.command('ping')
   except Exception:
@@ -184,6 +265,16 @@ async def fetch_movie(id: int | str, client: Any | None):
   query = { '_id': { '$eq': str(id) }}
   movie_data = await query_db(client, query, 'movie')
   return movie_data[0]
+
+@app.get('/movie_history/fetch/{id}', tags=['movie'], summary="Fetch movie_history in db")
+async def fetch_movie_history(id: int | str, client: Any | None = None):
+  try:
+    client.admin.command('ping')
+  except Exception:
+    client = await connect_server()
+  query = { 'film_id': { '$eq': str(id) }}
+  movie_history_data = await query_db(client, query, 'movie_history')
+  return movie_history_data[0]
 
 @app.get(
     '/movie/scrape/{film_slug}', 
@@ -208,7 +299,9 @@ def scrape_movie(
       **film
     }
   page.validate_model(film)
-  return { 'data': film }
+  return { 
+    'data': film,
+  }
 
 @app.patch('/movie/{film_slug}', response_model=None, tags=['movie'], summary="Patch existing film from DB")
 def update_movie(film_slug: str):
@@ -219,7 +312,7 @@ def update_movie(film_slug: str):
 async def parse_list(id: int, client: Any | None = None, fetch_movies: bool = False):
   try:
     client.admin.command('ping')
-  except Exception:
+  except Exception: # NOTE: update this to be a separate connection concern
     client = await connect_server()
   query = { 'list_id': { '$eq': str(id) } }
   list_history = await query_db(client, query, 'list_history', 1)
@@ -231,11 +324,19 @@ async def parse_list(id: int, client: Any | None = None, fetch_movies: bool = Fa
       show_full_data(film, client) for film in data
     ]
     updated_films = await asyncio.gather(*tasks)
-    results = updated_films
-  return results
+    results['data'] = updated_films
+    return results
+  else:
+    return results
+
+@app.get('/delete-all/{collection}', response_model=None, tags=['dev-only'])
+async def delete_all_docs(collection: str):
+  client = await connect_server()
+  await delete_docs(client, {}, collection, single=False)
+  return None
 
 async def show_full_data(film, client):
-  film_data = await fetch_movie(film['film_id'], client)
+  film_data = await fetch_movie_history(film['film_id'], client)
   try:
     del film_data['_id']
   except KeyError:
