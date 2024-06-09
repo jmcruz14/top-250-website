@@ -14,9 +14,14 @@ export default defineNuxtConfig({
   // ],
   srcDir: 'src/',
   modules: [
-    '@nuxtjs/tailwindcss'
+    '@nuxtjs/tailwindcss',
+    'nuxt-primevue'
   ],
-  css: ['@/assets/css/main.css'],
+  css: [
+    '@/assets/css/main.css',
+    'primeicons/primeicons.css',
+    'primevue/resources/themes/lara-light-green/theme.css'
+  ],
   app: {
     head: {
       htmlAttrs: {
@@ -31,5 +36,21 @@ export default defineNuxtConfig({
         }
       ]
     }
+  },
+
+  primevue: {
+    usePrimeVue: true,
+    components: {
+      prefix: '',
+      include: '*'
+    },
+    options: {
+      ripple: true,
+      unstyled: false,
+      // cssLayerOrder: 'reset,primevue'
+    }
+    // pt: {
+
+    // }
   }
 })

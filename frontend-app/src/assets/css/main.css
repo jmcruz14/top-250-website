@@ -3,8 +3,12 @@
 @tailwind utilities;
 
 :root {
-  font-family: 'Roboto Mono', 'Raleway', 'Lato', Avenir, 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  color: white;
+  font-family: 'Roboto Mono', 'Raleway', 'Lato', Avenir, 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif !important;
+  color: #e2e8f0;
   @apply bg-gradient-to-r from-green-600 to-emerald-600
+}
+
+.backdrop {
+  @apply bg-gradient-to-r from-green-600 to-emerald-600 !important;
 }
 

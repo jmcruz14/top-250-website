@@ -1,5 +1,12 @@
 import { useRuntimeConfig } from '#app'
 
+/**
+ * Fetches the most recent list history
+ * stored in the database.
+ * @param {Number} id numerical id
+ * @param {Boolean} showAll flag to toggle retrieval of all metadata
+ * @returns {Promise<Object>}
+ */
 export async function fetchListHistory(id, showAll) {
   try {
     const config = useRuntimeConfig();
