@@ -4,7 +4,8 @@
 
 :root {
   font-family: 'Roboto Mono', 'Raleway', 'Lato', Avenir, 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif !important;
-  color: #e2e8f0;
+  /* color: #e2e8f0; */
+  color: white;
   @apply bg-gradient-to-r from-green-600 to-emerald-600
 }
 
