@@ -7,14 +7,13 @@ import { useRuntimeConfig } from '#app'
  * @param {Boolean} showAll flag to toggle retrieval of all metadata
  * @returns {Promise<Object>}
  */
-export async function fetchListHistory(id, showAll) {
+export async function fetchListHistory(id) {
   try {
     const config = useRuntimeConfig();
     const apiUrl = config?.public?.apiUrl;
-    const fetchMovies = showAll ? true : false
     const response = await $fetch(`${apiUrl}/list-history`, {
       method: 'GET',
-      params: { id, fetch_movies: fetchMovies }
+      params: { id }
     });
     return response;
   } catch (error) {
