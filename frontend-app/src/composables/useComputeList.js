@@ -1,7 +1,7 @@
 import { isNull, isNumber, chain } from 'lodash'
 // import Math from 'Math'
 
-export function useComputeList () {
+export const useComputeList = () => {
 
   function calculateAverageRating (data) {
     const listLength = data?.length;
@@ -73,3 +73,5 @@ export function useComputeList () {
     calculateMedian
   }
 }
+
+export default useComputeList;
