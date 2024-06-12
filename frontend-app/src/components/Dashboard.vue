@@ -1,7 +1,7 @@
 <template>
-  <div>
+  <div class="mx-8">
 
-    <div class="mx-4 grid grid-cols-3 gap-8">
+    <div class="grid grid-cols-3 gap-8">
       <div class="col-span-1 flex flex-col gap-2 justify-center">
         <span class="font-proportional font-weight-700 text-2xl">About</span>
         <p class="font-tabular">
@@ -46,8 +46,13 @@
       </Card>
     </div>
 
+    <Divider />
+  
     <!-- TODO: add graph here then package into a separate component -->
-
+    <Suspense>
+      <div ref="graphSection">
+      </div>
+    </Suspense>
 
     <pre>
       {{ data }}
@@ -57,11 +62,15 @@
 
 
 <script>
-import { ref, computed } from 'vue'
+import { isUndefined, omit } from 'lodash'
+import { ref, computed, watch, onMounted, createVNode } from 'vue'
+import { useD3 } from '~/composables/useD3';
 import { useComputeList } from '~/composables/useComputeList';
+import { useStatistics } from '~/composables/useStatistics';
+import { fetchMovie } from '~/composables/useListHistory';
 
 import Widgets from './dashboard-widgets';
-
+import Divider from 'primevue/divider';
 import Badge from 'primevue/badge';
 import Card from 'primevue/card';
 
@@ -74,24 +83,61 @@ export default {
   },
   components: {
     Badge,
-    Card
+    Card,
+    Divider
   },
-  setup (props, { emit }) {
-    const data = computed(() => props?.data)
-    const lastUpdate = computed(() => props?.lastUpdate)
-    const publishDate = computed(() => props?.publishDate)
+  async setup (props, { emit }) {
+    const data = computed(() => props?.data);
+    const lastUpdate = computed(() => props?.lastUpdate);
+    const publishDate = computed(() => props?.publishDate);
+
+    const graphSection = ref(null);
+
     const { 
       calculateAverageRating,
       calculateAverageClassicRating,
       calculateRange,
       calculateMedian
-    } = useComputeList();    
+    } = useComputeList();
+
+    const {
+      mostReviewed,
+      mostViewed
+    } = useStatistics();
+
+    const {
+      createBarChart
+    } = useD3();
+
+    const mostReviewedResult = ref(null);
+    const mostViewedResult = ref(null);
+    onMounted(async () => {
+      if (data?.value && !isUndefined(data?.value)) {
+        mostReviewedResult.value = mostReviewed(data?.value)
+        Promise.all(mostReviewedResult?.value?.map(async (film) => {
+          const results = await fetchMovie(film['film_id'])
+          const movie_data = omit(results, ['_id'])
+          return {
+            ...film,
+            ...movie_data
+          }
+        })).then(async v => {
+          const chart = await createBarChart(
+            v, 'review_count', 'film_title',
+            '#f1f5f9', 'Film Title', 'Most Reviewed Films', true
+          )
+          graphSection.value.appendChild(chart)
+        })
+      }
+    })
 
     return {
       calculateAverageRating,
       calculateAverageClassicRating,
       calculateRange,
       calculateMedian,
+
+      graphSection,
 
       data,
       lastUpdate,
