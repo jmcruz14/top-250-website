@@ -11,7 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 import requests
 import uuid
-from pymongo.errors import ConnectionFailure
+from pymongo.errors import ConnectionFailure, ServerSelectionTimeoutError
 from bs4 import BeautifulSoup
 from tqdm import tqdm
 from datetime import datetime, timezone
@@ -141,6 +141,8 @@ async def scrape_letterboxd_list(
         **film_numerical_stats
       }
     else:
+
+      # TODO: include a flag in this API to add to movie_history since the list is new
       movie_history_query = { 'film_id': { '$eq': film_id }}
       latest_film = await query_db(client, movie_history_query, 'movie_history')
       film_data = latest_film[0]
