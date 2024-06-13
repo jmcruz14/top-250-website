@@ -37,8 +37,18 @@ export const useStatistics = () => {
     return topFive
   }
 
+  function mostLiked (data) {
+    const likeCount = chain(data)
+      .filter(i => i?.like_count)
+      .value()
+    const sortedLikeCount = likeCount.slice().sort((a, b) => d3.descending(a.like_count, b.like_count));
+    const topFive = sortedLikeCount.slice(0, 5);
+    return topFive
+  }
+
   return {
     mostReviewed,
-    mostViewed
+    mostViewed,
+    mostLiked
   }
 }

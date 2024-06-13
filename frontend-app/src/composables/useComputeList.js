@@ -73,5 +73,3 @@ export const useComputeList = () => {
     calculateMedian
   }
 }
-
-export default useComputeList;

@@ -22,13 +22,13 @@
         <template #content>
           <div class="grid grid-cols-2 gap-5">
             <span class="font-proportional">Average Rating</span>
-            <span class="font-tabular">{{ data ? calculateAverageRating(data) : null }}</span>
+            <span class="font-tabular">{{ averageRating }}</span>
             <span class="font-proportional">Average Classic* Rating</span>
-            <span class="font-tabular">{{ data ? calculateAverageClassicRating(data) : null }}</span>
+            <span class="font-tabular">{{ averageClassicRating }}</span>
             <span class="font-proportional">Range of Ratings</span>
-            <span class="font-tabular">{{ data ? calculateRange(data) : null }}</span>
+            <span class="font-tabular">{{ rangeRating }}</span>
             <span class="font-proportional">Median</span>
-            <span class="font-tabular">{{ data ? calculateMedian(data) : null }}</span>
+            <span class="font-tabular">{{ medianRating }}</span>
           </div>
           </template>
           <template #footer>
@@ -50,8 +50,21 @@
   
     <!-- TODO: add graph here then package into a separate component -->
     <Suspense>
-      <div ref="graphSection">
-      </div>
+      <template #default>
+        <MostReviewed :data="mostReviewedResult" />
+      </template>
+      <template #fallback>
+        <ProgressSpinner v-if="!mostReviewedResult" />
+      </template>
+    </Suspense>
+
+    <Suspense>
+      <template #default>
+        <MostViewed :data="mostViewedResult" />
+      </template>
+      <template #fallback>
+        <ProgressSpinner />
+      </template>
     </Suspense>
 
     <pre>
@@ -63,16 +76,19 @@
 
 <script>
 import { isUndefined, omit } from 'lodash'
-import { ref, computed, watch, onMounted, createVNode } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useD3 } from '~/composables/useD3';
 import { useComputeList } from '~/composables/useComputeList';
 import { useStatistics } from '~/composables/useStatistics';
 import { fetchMovie } from '~/composables/useListHistory';
 
-import Widgets from './dashboard-widgets';
 import Divider from 'primevue/divider';
 import Badge from 'primevue/badge';
 import Card from 'primevue/card';
+import ProgressSpinner from 'primevue/progressspinner';
+
+import MostReviewed from './dashboard-widgets/mostReviewed.vue';
+import MostViewed from './dashboard-widgets/mostViewed.vue';
 
 export default {
   props: {
@@ -84,12 +100,21 @@ export default {
   components: {
     Badge,
     Card,
-    Divider
+    Divider,
+    ProgressSpinner,
+
+    MostReviewed,
+	MostViewed,
   },
   async setup (props, { emit }) {
     const data = computed(() => props?.data);
     const lastUpdate = computed(() => props?.lastUpdate);
     const publishDate = computed(() => props?.publishDate);
+
+    const averageRating = ref(null);
+    const averageClassicRating = ref(null);
+    const rangeRating = ref(null);
+    const medianRating = ref(null);
 
     const graphSection = ref(null);
 
@@ -105,40 +130,30 @@ export default {
       mostViewed
     } = useStatistics();
 
-    const {
-      createBarChart
-    } = useD3();
-
     const mostReviewedResult = ref(null);
     const mostViewedResult = ref(null);
     onMounted(async () => {
       if (data?.value && !isUndefined(data?.value)) {
-        mostReviewedResult.value = mostReviewed(data?.value)
-        Promise.all(mostReviewedResult?.value?.map(async (film) => {
-          const results = await fetchMovie(film['film_id'])
-          const movie_data = omit(results, ['_id'])
-          return {
-            ...film,
-            ...movie_data
-          }
-        })).then(async v => {
-          const chart = await createBarChart(
-            v, 'review_count', 'film_title',
-            '#f1f5f9', 'Film Title', 'Most Reviewed Films', true
-          )
-          graphSection.value.appendChild(chart)
-        })
+        averageRating.value = calculateAverageRating(data?.value);
+        averageClassicRating.value = calculateAverageClassicRating(data?.value);
+        rangeRating.value = calculateRange(data?.value);
+        medianRating.value = calculateMedian(data?.value);
+
+        mostReviewedResult.value = mostReviewed(data?.value);
+		mostViewedResult.value = mostViewed(data?.value);
       }
     })
 
     return {
-      calculateAverageRating,
-      calculateAverageClassicRating,
-      calculateRange,
-      calculateMedian,
+      averageRating,
+      averageClassicRating,
+      medianRating,
+      rangeRating,
 
       graphSection,
-
+      mostReviewedResult,
+	    mostViewedResult,
+			
       data,
       lastUpdate,
       publishDate
