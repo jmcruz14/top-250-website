@@ -19,7 +19,11 @@ LBOXD_COLLECTION = os.environ['LBOXD_COLLECTION']
 async def connect_server() -> AsyncIOMotorClient | None:
   uri = f"mongodb+srv://{MONGODB_UNAME}:{MONGODB_PW}@{MONGODB_HOST}"
   try:
-    client = AsyncIOMotorClient(uri, tlsCAFile=certifi.where())
+    client = AsyncIOMotorClient(
+      uri, 
+      tlsCAFile=certifi.where(),
+      uuidRepresentation='standard'
+    )
     print("Pinged your deployment. You successfully connected to MongoDB!")
     return client
   except ServerSelectionTimeoutError as serverError:

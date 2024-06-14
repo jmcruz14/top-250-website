@@ -17,16 +17,24 @@ from tqdm import tqdm
 from datetime import datetime, timezone
 from bson import Binary, decode
 
+from models.movie_data import Movie, MovieOut, MovieHistoryOut
+from models.list_history import ListHistory
+
 from obj.list import LetterboxdList
 from obj.movie import LetterboxdFilmPage
 
 from scripts.index import getRankPlacement, getExtraPages
 from scripts.utils import strip_tz, convert_to_serializable, strip_descriptive_stats
 
-from dbconnect import connect_server, query_db, update_db, delete_docs
+from dbconnect import connect_server, query_db, update_db
+
+from api.dev_only import router as dev_router
 
 # Saved app variable will be run in the shell script
-app = FastAPI()
+app = FastAPI(
+  title="LetterboxdListDashboardAPI",
+  version="0.0.1"
+)
 origins = [
   "https://localhost:3000",
   "http://localhost:3000"
@@ -50,11 +58,12 @@ async def http_exception_handler(request, exc):
 
 # Return a Redirect Response for modification
 # FastAPI is a subclass of Starlette
-@app.get('/')
+@app.get('/', include_in_schema=False)
 async def add(request: Request, status_code=300):
   redirect_url = request.url_for('scrape_letterboxd_list', list_slug='top-250-narrative-feature-length-filipino')
   return RedirectResponse(redirect_url)
 
+# TODO: add OAuth for security
 @app.get(
     '/letterboxd-list/{list_slug}',
     tags=['letterboxd-list'],
@@ -64,7 +73,7 @@ async def scrape_letterboxd_list(
   list_slug: str,
   parse_extra_pages: bool = True,
   film_parse_limit: int = None
-):
+) -> ListHistory:
   '''
     Performs a webscraping function to extract data from lazy-loaded DOM
     in Letterboxd.
@@ -258,35 +267,40 @@ async def scrape_letterboxd_list(
 
   return list_history
 
-@app.get('/movie/fetch/{id}', tags=['movie'], summary="Fetch movie in db")
-async def fetch_movie(id: int | str, client: Any | None = None):
+@app.get('/movie/fetch/{id}', tags=['movie'], summary="Fetch movie in db", response_model_exclude_none=True)
+async def fetch_movie(id: int | str, client: Any | None = None) -> MovieOut:
   try:
     client.admin.command('ping')
   except Exception:
     client = await connect_server()
   query = { '_id': { '$eq': str(id) }}
   movie_data = await query_db(client, query, 'movie')
-  return movie_data[0]
+  return {
+    "data": movie_data[0]
+  }
 
 @app.get('/movie_history/fetch/{id}', tags=['movie'], summary="Fetch movie_history in db")
-async def fetch_movie_history(id: int | str, client: Any | None = None):
+async def fetch_movie_history(id: int | str, client: Any | None = None) -> MovieHistoryOut:
   try:
     client.admin.command('ping')
-  except Exception:
+  except Exception: 
     client = await connect_server()
   query = { 'film_id': { '$eq': str(id) }}
-  movie_history_data = await query_db(client, query, 'movie_history')
-  return movie_history_data[0]
+  results = await query_db(client, query, 'movie_history')
+  return {
+    "data": results[0]
+  }
 
 @app.get(
     '/movie/scrape/{film_slug}', 
     tags=['movie'], 
-    summary="Scrape movie from list"
+    summary="Scrape movie from list",
+    response_model_exclude_none=True
   )
 def scrape_movie(
-  film_slug: str,
-  film_id: Annotated[int, Body(embed=True)] = None
-  ):
+    film_slug: str,
+    film_id: int | None = None
+  ) -> MovieOut:
   film_base_uri = f"https://letterboxd.com/film/{film_slug}"
   response = requests.get(film_base_uri)
   soup = BeautifulSoup(response.content, 'lxml')
@@ -306,12 +320,12 @@ def scrape_movie(
   }
 
 @app.patch('/movie/{film_slug}', response_model=None, tags=['movie'], summary="Patch existing film from DB")
-def update_movie(film_slug: str):
+def update_movie(film_slug: str) -> Movie:
   # TODO: update movie metadata here
   return 
 
 @app.get('/list-history', tags=['letterboxd-list'], summary="Fetch stored list-history item")
-async def parse_list(id: int, client: Any | None = None, fetch_movies: bool = False):
+async def parse_list(id: int, client: Any | None = None, fetch_movies: bool = False) -> ListHistory:
   try:
     client.admin.command('ping')
   except Exception: # NOTE: update this to be a separate connection concern
@@ -331,11 +345,7 @@ async def parse_list(id: int, client: Any | None = None, fetch_movies: bool = Fa
   else:
     return results
 
-@app.get('/delete-all/{collection}', response_model=None, tags=['dev-only'])
-async def delete_all_docs(collection: str):
-  client = await connect_server()
-  await delete_docs(client, {}, collection, single=False)
-  return None
+app.include_router(dev_router)
 
 async def show_full_data(film, client):
   film_data = await fetch_movie_history(film['film_id'], client)
