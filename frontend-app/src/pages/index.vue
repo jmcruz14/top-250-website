@@ -24,7 +24,7 @@
 import { definePageMeta, useSeoMeta } from '#imports'
 import { onMounted, ref, watch } from 'vue'
 import { getDate } from '~/utils/list'
-import { fetchListHistory } from '~/composables/useListHistory'
+import { fetchListHistory } from '~/composables/useFilmApi'
 
 // import TabMenu from 'primevue/tabmenu';
 import Panel from 'primevue/panel';

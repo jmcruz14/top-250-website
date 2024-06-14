@@ -1,8 +1,6 @@
 import { useRuntimeConfig } from '#app'
 import { cloneDeep } from 'lodash'
 
-// TODO: rename this to fetching from api instead
-
 /**
  * Fetches the most recent list history
  * stored in the database.
@@ -18,6 +16,8 @@ export async function fetchListHistory(id) {
       method: 'GET',
       params: { id }
     });
+
+    console.warn('data-fetched', response)
 
     const data = response?.data;
     const dataMap = new Map(data.map((obj) => [obj?.film_id, obj]));
@@ -38,8 +38,8 @@ export async function fetchMovie(id) {
     const response = await $fetch(`${apiUrl}/movie/fetch/${id}`, {
       method: 'GET'
     })
-
-    return response
+    const data = response?.data
+    return data
   } catch (error) {
     console.error('Error fetching movie:', error);
     throw new Error('Failed to fetch movie');

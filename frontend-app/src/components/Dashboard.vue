@@ -80,7 +80,7 @@ import { ref, computed, watch, onMounted } from 'vue'
 import { useD3 } from '~/composables/useD3';
 import { useComputeList } from '~/composables/useComputeList';
 import { useStatistics } from '~/composables/useStatistics';
-import { fetchMovie } from '~/composables/useListHistory';
+import { fetchMovie } from '~/composables/useFilmApi';
 
 import Divider from 'primevue/divider';
 import Badge from 'primevue/badge';

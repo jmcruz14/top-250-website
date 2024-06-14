@@ -6,7 +6,7 @@
 <script>
 import { isUndefined, omit } from 'lodash';
 import { ref, onMounted, computed } from 'vue';
-import { fetchMovie } from '@/composables/useListHistory';
+import { fetchMovie } from '~/composables/useFilmApi';
 import { useD3 } from '@/composables/useD3';
 
 export default {
