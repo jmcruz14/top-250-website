@@ -1,16 +1,13 @@
 # top-250-website
 Website-hosted dashboard showing analysis of the Top 250 Filipino Movies of all time.
 
-### Planned Stack
-**Back-end**: 
-- FastAPI (for API constructions)
-- MongoDB
+For curious developers and data enthusiasts, I've set-up a couple of guides that you can access below to understand how I
+arrived at this project.
 
-**Front-end**:
-- JS
-    - Nuxt3
-    - Tailwind
-    - Radix
+### Guides
+- [Docker Setup](/docs/docker_setup.md)
+- Fast API (Coming soon)
+
 
 ### Instructions for activating (dev-only)
 1. Save as shell script something like `run_fastapi.sh`.
