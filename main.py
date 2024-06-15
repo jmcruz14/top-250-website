@@ -2,15 +2,16 @@ import os
 import json
 import asyncio
 from typing import Annotated, Any
-from fastapi import FastAPI, Request, Body
+from fastapi import FastAPI, Request, Body, Depends
 from fastapi.encoders import jsonable_encoder
-from fastapi.exceptions import RequestValidationError
+from fastapi.exceptions import RequestValidationError, HTTPException
 from fastapi.responses import PlainTextResponse, RedirectResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 import requests
 import uuid
+from motor.motor_asyncio import AsyncIOMotorClient
 from pymongo.errors import ConnectionFailure, ServerSelectionTimeoutError
 from bs4 import BeautifulSoup
 from tqdm import tqdm
@@ -33,7 +34,8 @@ from api.dev_only import router as dev_router
 # Saved app variable will be run in the shell script
 app = FastAPI(
   title="LetterboxdListDashboardAPI",
-  version="0.0.1"
+  version="0.0.1",
+  lifespan=connect_server
 )
 origins = [
   "https://localhost:3000",
@@ -47,9 +49,13 @@ app.add_middleware(
   allow_headers=['*'],
 )
 
+
 lboxd_url = 'https://letterboxd.com'
 lboxd_list_link = 'https://letterboxd.com/tuesjays/list/top-250-narrative-feature-length-filipino/'
 lboxd_list_id = '15294077'
+
+async def get_database() -> AsyncIOMotorClient:
+  return app.database
 
 @app.exception_handler(StarletteHTTPException)
 async def http_exception_handler(request, exc):
@@ -72,7 +78,8 @@ async def add(request: Request, status_code=300):
 async def scrape_letterboxd_list(
   list_slug: str,
   parse_extra_pages: bool = True,
-  film_parse_limit: int = None
+  film_parse_limit: int = None,
+  db: AsyncIOMotorClient = Depends(get_database)
 ) -> ListHistory:
   '''
     Performs a webscraping function to extract data from lazy-loaded DOM
@@ -93,8 +100,12 @@ async def scrape_letterboxd_list(
   pages = getExtraPages(soup)
   results = soup.find_all('li', 'poster-container', limit=film_parse_limit)
 
-  client = await connect_server()
-  list_entry = await parse_list(lboxd_list_id, client)
+  try:
+    await db.command('ping')
+  except Exception:
+    raise HTTPException(status_code=500, detail="Database connection error")
+
+  list_entry = await parse_list(lboxd_list_id, db)
   list_entry_date = list_entry['last_update']
   if list_entry_date == last_update:
     return jsonable_encoder(list_entry)
@@ -115,7 +126,7 @@ async def scrape_letterboxd_list(
     }
 
     query = { '_id': { '$eq': film_id } }
-    film_in_db = await query_db(client, query, 'movie')
+    film_in_db = await query_db(db, query, 'movie')
     # NOTE: explore adding additional flag to check if changes in movie were made
     if not film_in_db:
       print(f"New film detected in list! Parsing film_id: {film_id}")
@@ -140,10 +151,10 @@ async def scrape_letterboxd_list(
         'film_id': film_id,
         'created_at': movie_history_created_at,
       }
-      await update_db(client, movie_history, 'movie_history')
+      await update_db(db, movie_history, 'movie_history')
       
       movie = strip_descriptive_stats(film_data)
-      await update_db(client, movie, 'movie')
+      await update_db(db, movie, 'movie')
 
       film = {
         **film,
@@ -153,7 +164,7 @@ async def scrape_letterboxd_list(
 
       # TODO: include a flag in this API to add to movie_history since the list is new
       movie_history_query = { 'film_id': { '$eq': film_id }}
-      latest_film = await query_db(client, movie_history_query, 'movie_history')
+      latest_film = await query_db(db, movie_history_query, 'movie_history')
       film_data = latest_film[0]
       film_numerical_stats = {
         'rating': film_data['rating'] if 'rating' in film_data else None,
@@ -188,7 +199,7 @@ async def scrape_letterboxd_list(
         }
 
         query = { '_id': { '$eq': film_id } }
-        film_in_db = await query_db(client, query, 'movie')
+        film_in_db = await query_db(db, query, 'movie')
         if not film_in_db:
           print(f"New film detected in list! Parsing film_id: {film_id}")
           result = scrape_movie(film_slug, film_id)
@@ -211,10 +222,10 @@ async def scrape_letterboxd_list(
             'film_id': film_id,
             'created_at': movie_history_created_at,
           }
-          await update_db(client, movie_history, 'movie_history')
+          await update_db(db, movie_history, 'movie_history')
 
           movie = strip_descriptive_stats(film_data)
-          await update_db(client, movie, 'movie')
+          await update_db(db, movie, 'movie')
           
           film = {
             **film,
@@ -222,7 +233,7 @@ async def scrape_letterboxd_list(
           }
         else:
           movie_history_query = { 'film_id': { '$eq': film_id }}
-          latest_film = await query_db(client, movie_history_query, 'movie_history')
+          latest_film = await query_db(db, movie_history_query, 'movie_history')
           film_data = latest_film[0]
           film_numerical_stats = {
             'rating': film_data['rating'] if 'rating' in film_data else None,
@@ -262,34 +273,43 @@ async def scrape_letterboxd_list(
       "last_update": last_update,
       "created_at": created_at
     }
-    await update_db(client, save_list, 'list_history')
-  client.close()
+    await update_db(db, save_list, 'list_history')
+  db.close()
 
   return list_history
 
 @app.get('/movie/fetch/{id}', tags=['movie'], summary="Fetch movie in db", response_model_exclude_none=True)
-async def fetch_movie(id: int | str, client: Any | None = None) -> MovieOut:
+async def fetch_movie(
+  id: int | str, 
+  db: AsyncIOMotorClient = Depends(get_database)
+) -> MovieOut:
   try:
-    client.admin.command('ping')
+    await db.command('ping')
   except Exception:
-    client = await connect_server()
+    # client = await connect_server()
+    raise HTTPException(status_code=500, detail="Database connection error")
+
   query = { '_id': { '$eq': str(id) }}
-  movie_data = await query_db(client, query, 'movie')
-  return {
-    "data": movie_data[0]
-  }
+  movie_data = await query_db(db, query, 'movie')
+  return MovieOut(data=movie_data[0])
 
 @app.get('/movie_history/fetch/{id}', tags=['movie'], summary="Fetch movie_history in db")
-async def fetch_movie_history(id: int | str, client: Any | None = None) -> MovieHistoryOut:
+async def fetch_movie_history(
+  id: int | str, 
+  db: AsyncIOMotorClient = Depends(get_database)
+) -> MovieHistoryOut:
   try:
-    client.admin.command('ping')
-  except Exception: 
-    client = await connect_server()
+      await db.command('ping')
+  except Exception as e:
+      raise HTTPException(status_code=500, detail="Database connection error")
+
   query = { 'film_id': { '$eq': str(id) }}
-  results = await query_db(client, query, 'movie_history')
-  return {
-    "data": results[0]
-  }
+  results = await query_db(db, query, 'movie_history')
+
+  if not results:
+        raise HTTPException(status_code=404, detail="Movie history not found")
+
+  return MovieHistoryOut(data=results[0])
 
 @app.get(
     '/movie/scrape/{film_slug}', 
@@ -325,19 +345,20 @@ def update_movie(film_slug: str) -> Movie:
   return 
 
 @app.get('/list-history', tags=['letterboxd-list'], summary="Fetch stored list-history item")
-async def parse_list(id: int, client: Any | None = None, fetch_movies: bool = False) -> ListHistory:
+async def parse_list(id: int, db: Annotated[AsyncIOMotorClient, Depends(get_database)], fetch_movies: bool = False) -> ListHistory:
   try:
-    client.admin.command('ping')
-  except Exception: # NOTE: update this to be a separate connection concern
-    client = await connect_server()
+      await db.command('ping')
+  except Exception as e:
+      raise HTTPException(status_code=500, detail="Database connection error")
+
   query = { 'list_id': { '$eq': str(id) } }
-  list_history = await query_db(client, query, 'list_history', 1)
+  list_history = await query_db(db, query, 'list_history', 1)
   results = convert_to_serializable(list_history[0])
   
   if fetch_movies:
     data = results['data']
     tasks = [
-      show_full_data(film, client) for film in data
+      show_full_data(film, db) for film in data
     ]
     updated_films = await asyncio.gather(*tasks)
     results['data'] = updated_films
