@@ -79,6 +79,7 @@ class Movie(BaseModel):
   production_design: Optional[list[str]] = None
   art_direction: Optional[list[str]] = None
   sound: Optional[list[str]] = None
+  poster: Optional[str] = None
   
   model_config = {
     "json_schema_extra": {
@@ -104,7 +105,8 @@ class Movie(BaseModel):
           "assistant_director": ["Kim Armitage", "Basil Grillo", "Tina Maskell", "Ben Dixon"],
           "production_design": ["Owen Paterson"],
           "art_direction": ["James Foster", "Tom Brown", "Steven Lawrence"],
-          "sound": ["David Evans", "David Franklin", "Jed M. Dodge", "Hugo Adams", "Patrick Cullen"]
+          "sound": ["David Evans", "David Franklin", "Jed M. Dodge", "Hugo Adams", "Patrick Cullen"],
+          "poster": "https://a.ltrbxd.com/resized/film-poster/2/6/7/2/3/1/267231-on-north-diversion-road-0-230-0-345-crop.jpg?v=7bcc290517"
         }
       ]
     }
@@ -157,6 +159,7 @@ class MovieHistory(Movie):
           "production_design": ["Owen Paterson"],
           "art_direction": ["James Foster", "Tom Brown", "Steven Lawrence"],
           "sound": ["David Evans", "David Franklin", "Jed M. Dodge", "Hugo Adams", "Patrick Cullen"],
+          "poster": "https://a.ltrbxd.com/resized/film-poster/2/6/7/2/3/1/267231-on-north-diversion-road-0-230-0-345-crop.jpg?v=7bcc290517",
           "rating": 4.19,
           "classic_rating": 4.40,
           "review_count": 3440,

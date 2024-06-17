@@ -208,6 +208,18 @@ class LetterboxdFilmPage:
       print(f"Error occurred while parsing runtime: {e}")
       return None
   
+  def getPoster(self: Tag) -> str | None:
+    try:
+      json_script = self.script
+      image = json_script['image']
+
+      return image
+    except Exception as e:
+      print(f"Error occurred while parsing rating count: {e}")
+      image = None
+      
+      return image
+  
   def getAllStats(self):
     self.getScript(self.soup)
     self.film_slug = self.script['url'].split('/')[4]
@@ -223,6 +235,7 @@ class LetterboxdFilmPage:
     self.review_count = self.getReviewCount()
     self.rating_count = self.getRatingCount()
     self.runtime = self.getRuntime()
+    self.poster = self.getPoster()
 
     return {
       'film_slug': self.film_slug,
@@ -238,6 +251,7 @@ class LetterboxdFilmPage:
       'cast': self.cast,
       'production_company': self.production_company,
       **self.crew,
+      'poster': self.poster
     }
   
   def validate_model(self, dict):

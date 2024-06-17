@@ -14,6 +14,11 @@ rating_conversion = {
   '★★★★★': 5,
 }
 
+corrupted_character_conversion = {
+  'вҳ…': "★",
+  "ВҪ": "½"
+}
+
 def get_classic_histogram_rating(hist_dom) -> int:
   all_rating_el = hist_dom.find_all('li', 'rating-histogram-bar')
   RATING_COUNT_THRESHOLD = 40
@@ -23,6 +28,7 @@ def get_classic_histogram_rating(hist_dom) -> int:
   for rating_el in all_rating_el:
     if rating_el.a is not None:
       rating_title = rating_el.a.get('title')
+      rating_title = check_corrupt_characters(rating_title, corrupted_character_conversion)
       count_and_rating_only = rating_title.split('ratings')
       count_and_rating = unicodedata.normalize('NFKC', count_and_rating_only[0]).split(' ')
       rating_count = extract_numeric_text(count_and_rating[0])
@@ -36,3 +42,8 @@ def get_classic_histogram_rating(hist_dom) -> int:
   standard_rating = 3.5 * RATING_PROPORTION if RATING_PROPORTION != 1 else 0
 
   return round(standard_rating + aggregate_rating, 2)
+
+def check_corrupt_characters(text: str, charMap: dict) -> str:
+  for key in charMap:
+    text = text.replace(key, charMap[key])
+  return text
