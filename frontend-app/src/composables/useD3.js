@@ -41,13 +41,21 @@ export const useD3 = () => {
     chartWidth = 900, chartHeight = 450,
   ) {
 
-      console.warn('data-fetched', data)
-
       const svg = d3.create('svg')
         .attr("width", elWidth)
         .attr("height", elHeight)
         .attr("viewBox", [0, 0, elWidth, elHeight])
         .attr("style", "max-width: 100%; height: auto;");
+
+      // Create a tooltip element
+      const tooltip = d3.select("body").append("div")
+        .attr("class", "tooltip")
+        .attr("class", "bg-slate-600")
+        .style("position", "absolute")
+        .style("color", "white")
+        .style("border", "1px solid #ccc")
+        .style("padding", "10px")
+        .style("cursor", "pointer")
       
       // Generate x-scale
       const x = d3.scaleBand()
@@ -71,6 +79,41 @@ export const useD3 = () => {
             .attr("y", d => y(d[sortKey]))
             .attr("height", d=> y(0) - y(d[sortKey]))
             .attr("width", x.bandwidth())
+            .on("mouseover", (event, d) => {
+              tooltip
+                .style("display", "block")
+                .html(`
+                  <div class="flex flex-col">
+                    <div class="flex gap-1">
+                      <span class="font-proportional text-sm">Rank:</span>
+                      <span class="font-tabular font-bold text-sm">${d['rank'] ? d['rank'] : null}</span>
+                    </div>
+                    <div class="flex gap-1">
+                      <span class="font-proportional text-sm">Count:</span>
+                      <span class="font-tabular font-bold text-sm">${d[sortKey] ? d[sortKey] : null}</span>
+                    </div>
+                    <div class="flex gap-1">
+                      <span class="font-proportional text-sm">Rating:</span>
+                      <span class="font-tabular font-bold text-sm">${d?.rating ? d['rating'] : null}</span>
+                    </div>
+                    <div class="flex gap-1">
+                      <span class="font-proportional text-sm">Classic Rating:</span>
+                      <span class="font-tabular font-bold text-sm">${d?.classic_rating ? d['classic_rating'] : null}</span>
+                    </div>
+                  </div>
+                `);
+              
+              event.target.style.stroke = "black"
+              event.target.style["stroke-width"] = 1.75
+            })
+            .on("mousemove", event => {
+              tooltip.style("left", (event.pageX + 10) + "px")
+                .style("top", (event.pageY - 5) + "px");
+            })
+            .on("mouseout", (event) => {
+              tooltip.style("display", "none");
+              event.target.style.stroke = "none"
+            });
       
       // Add x-axis
       svg.append("g")

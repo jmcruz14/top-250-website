@@ -1,3 +1,5 @@
+// import * as d3 from 'd3'
+import { sortBy } from 'lodash'
 import { isNull, isNumber, chain } from 'lodash'
 // import Math from 'Math'
 
@@ -66,10 +68,44 @@ export const useComputeList = () => {
     }
   }
 
+  /**
+   * Get the lowest statistic based on indicated statistic measure.
+   * 
+   * @param {Object} data     data object
+   * @param {String} measure  statistic measure of reference
+   */
+  function calculateLowestStat (data, measure) {
+    try {
+      const sortedStat = sortBy(data, o => o[measure])
+      return sortedStat[0]
+    } catch (e) {
+      console.error(`Error catching lowest ${measure}: ${e}`)
+      return null
+    }
+  }
+
+  /**
+   * Get the highest statistic based on indicated statistic measure.
+   * 
+   * @param {Object} data     data object
+   * @param {String} measure  statistic measure of reference
+   */
+  function calculateHighestStat (data, measure) {
+    try {
+      const sortedStat = sortBy(data, o => o[measure])
+      return sortedStat.slice().reverse()[0]
+    } catch (e) {
+      console.error(`Error catching highest ${measure}: ${e}`)
+      return null
+    }
+  }
+
   return {
     calculateAverageRating,
     calculateAverageClassicRating,
     calculateRange,
-    calculateMedian
+    calculateMedian,
+    calculateLowestStat,
+    calculateHighestStat
   }
 }

@@ -17,8 +17,6 @@ export async function fetchListHistory(id) {
       params: { id }
     });
 
-    console.warn('data-fetched', response)
-
     const data = response?.data;
     const dataMap = new Map(data.map((obj) => [obj?.film_id, obj]));
     const responseMap = cloneDeep(response);

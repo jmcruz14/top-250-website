@@ -67,9 +67,38 @@
       </template>
     </Suspense>
 
+    <Suspense>
+      <template #default>
+        <MostLiked :data="mostLikedResult" />
+      </template>
+      <template #fallback>
+        <ProgressSpinner />
+      </template>
+    </Suspense>
+    
+    <!-- sad annoying statistics -->
+    <div class="flex flex-col gap-6">
+      <span class="text-3xl font-proprtional ml-[150px]">Sad Numbers...</span>
+      <Suspense>
+        <template #default>
+          <UnratedMovies 
+            :data="unratedMoviesResult"
+            :lowest-viewed-rating="lowestViewedRating"
+            :highest-viewed-unrated="highestViewedUnrated"
+          />
+        </template>
+        <template #fallback>
+          <ProgressSpinner class="bg-white" />
+        </template>
+      </Suspense>
+    </div>
+
+      
     <pre>
       {{ data }}
     </pre>
+
+    <Footer />
   </div>
 </template>
 
@@ -87,8 +116,11 @@ import Badge from 'primevue/badge';
 import Card from 'primevue/card';
 import ProgressSpinner from 'primevue/progressspinner';
 
-import MostReviewed from './dashboard-widgets/mostReviewed.vue';
-import MostViewed from './dashboard-widgets/mostViewed.vue';
+import MostReviewed from './dashboard-widgets/mostReviewed';
+import MostViewed from './dashboard-widgets/mostViewed';
+import MostLiked from './dashboard-widgets/mostLiked'
+import UnratedMovies from './dashboard-widgets/unratedMovies'
+import Footer from './dashboard-widgets/Footer'
 
 export default {
   props: {
@@ -104,7 +136,10 @@ export default {
     ProgressSpinner,
 
     MostReviewed,
-	MostViewed,
+	  MostViewed,
+    MostLiked,
+    UnratedMovies,
+    Footer
   },
   async setup (props, { emit }) {
     const data = computed(() => props?.data);
@@ -117,21 +152,31 @@ export default {
     const medianRating = ref(null);
 
     const graphSection = ref(null);
+    const lowestViewedRating = ref(null);
+    const highestViewedUnrated = ref(null);
 
     const { 
       calculateAverageRating,
       calculateAverageClassicRating,
       calculateRange,
-      calculateMedian
-    } = useComputeList();
-
+      calculateMedian,
+      calculateLowestStat,
+      calculateHighestStat
+      } = useComputeList();
+      
     const {
       mostReviewed,
-      mostViewed
+      mostViewed,
+      mostLiked,
+      unratedMovies,
+      ratedMovies,
     } = useStatistics();
 
     const mostReviewedResult = ref(null);
     const mostViewedResult = ref(null);
+    const mostLikedResult = ref(null);
+    const unratedMoviesResult = ref(null);
+    const ratedMoviesResult = ref(null);
     onMounted(async () => {
       if (data?.value && !isUndefined(data?.value)) {
         averageRating.value = calculateAverageRating(data?.value);
@@ -140,7 +185,13 @@ export default {
         medianRating.value = calculateMedian(data?.value);
 
         mostReviewedResult.value = mostReviewed(data?.value);
-		mostViewedResult.value = mostViewed(data?.value);
+		    mostViewedResult.value = mostViewed(data?.value);
+        mostLikedResult.value = mostLiked(data?.value);
+        unratedMoviesResult.value = unratedMovies(data?.value);
+        ratedMoviesResult.value = ratedMovies(data?.value);
+
+        lowestViewedRating.value = calculateLowestStat(ratedMoviesResult?.value?.films, 'watch_count');
+        highestViewedUnrated.value = calculateHighestStat(unratedMoviesResult.value?.films, 'watch_count');
       }
     })
 
@@ -153,6 +204,11 @@ export default {
       graphSection,
       mostReviewedResult,
 	    mostViewedResult,
+      mostLikedResult,
+      unratedMoviesResult,
+
+      lowestViewedRating,
+      highestViewedUnrated,
 			
       data,
       lastUpdate,

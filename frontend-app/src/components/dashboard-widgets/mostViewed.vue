@@ -1,5 +1,5 @@
 <template>
-  <div ref="mostViewedDiv" class="ml-[200px]">
+  <div ref="mostViewedDiv" class="flex flex-row-reverse drop-shadow-md">
   </div>
 </template>
 

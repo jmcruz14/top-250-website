@@ -1,8 +1,7 @@
 import * as d3 from 'd3'
-import { chain } from 'lodash'
+import { chain, isNull } from 'lodash'
 
 export const useStatistics = () => {
-  // TODO: transfer mostReviewed here
   // ensure functions added here pertain to stat calculations only
 
   /**
@@ -46,9 +45,77 @@ export const useStatistics = () => {
     return topFive
   }
 
+  /**
+   * Gets the statistical count of unrated movies in the list
+   * and additional metadata
+   * 
+   * @param {Object} data 
+   * @returns {Number}
+   */
+  function unratedMovies (data) {
+    const unrated = chain(data)
+      .filter(i => isNull(i.rating))
+      .value()
+    
+    const avgRating = unrated?.reduce((a, movie) => {
+      const classic_rating = movie?.classic_rating
+      return a + classic_rating
+    }, 0) / unrated?.length
+
+    const avgWatchCount = unrated?.reduce((a, movie) => {
+      const watch_count = movie?.watch_count
+      return a + watch_count
+    }, 0) / unrated?.length
+
+    return {
+      'films': unrated,
+      'count': unrated?.length,
+      'average_rating': avgRating,
+      'average_watch_count': avgWatchCount
+    }
+  }
+
+  /**
+   * Gets the statistical count of rated movies in the list
+   * and additional metadata
+   * 
+   * @param {Object} data 
+   * @returns {Number}
+   */
+  function ratedMovies (data) {
+    const rated = chain(data)
+      .filter(i => i?.rating)
+      .value()
+    
+    const avgRating = rated?.reduce((a, movie) => {
+      const classic_rating = movie?.classic_rating
+      return a + classic_rating
+    }, 0) / rated?.length
+
+    const avgWatchCount = rated?.reduce((a, movie) => {
+      const watch_count = movie?.watch_count
+      return a + watch_count
+    }, 0) / rated?.length
+
+    return {
+      'films': rated,
+      'count': rated?.length,
+      'average_rating': avgRating,
+      'average_watch_count': avgWatchCount
+    }
+  }
+
+  // PUT THRU AGGREGATE FUNCTION
+  // function perDecade (data) {
+  //   const decadeThresholds = d3.bin().thresholds([1950, 1960, 1970, 1980, 1990, 2000, 2010, 2020, 2030]);
+  //   const years = data.map(d => d.)
+  // }
+
   return {
     mostReviewed,
     mostViewed,
-    mostLiked
+    mostLiked,
+    unratedMovies,
+    ratedMovies,
   }
 }
