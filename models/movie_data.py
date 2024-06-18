@@ -11,7 +11,7 @@ class MovieRank(BaseModel):
   )
   film_id: str = Field(
     title="Film ID",
-    descripttion="film numerical id extracted from parent list",
+    description="film numerical id extracted from parent list",
     examples=["111490"]
   )
   rating: float | None = Field(

@@ -3,6 +3,7 @@ import pprint
 import json
 import certifi
 import asyncio
+from contextlib import asynccontextmanager
 from logging import info
 from fastapi import FastAPI
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -17,6 +18,7 @@ MONGODB_PW = parse.quote_plus(os.environ['MONGODB_PASSWORD'])
 MONGODB_HOST = os.environ['MONGODB_HOST']
 LBOXD_COLLECTION = os.environ['LBOXD_COLLECTION']
 
+@asynccontextmanager
 async def connect_server(app: FastAPI) -> AsyncIOMotorClient | None:
   uri = f"mongodb+srv://{MONGODB_UNAME}:{MONGODB_PW}@{MONGODB_HOST}"
   try:

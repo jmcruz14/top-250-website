@@ -11,5 +11,6 @@ __pycache__
 *.sh
 
 # Misc
+.test.env
 .env
 .DS_Store
