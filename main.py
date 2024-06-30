@@ -2,7 +2,7 @@ import os
 import json
 import asyncio
 from typing import Annotated, Any
-from fastapi import FastAPI, Request, Body, Depends
+from fastapi import FastAPI, Request, Body, Depends, Query
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError, HTTPException
 from fastapi.responses import PlainTextResponse, RedirectResponse
@@ -20,14 +20,17 @@ from bson import Binary, decode
 
 from models.movie_data import Movie, MovieOut, MovieHistoryOut
 from models.list_history import ListHistory
+from models.query import MovieStatsQuery
 
 from obj.list import LetterboxdList
 from obj.movie import LetterboxdFilmPage
 
+from constants.query import agg_ops_dict
+
 from scripts.index import getRankPlacement, getExtraPages
 from scripts.utils import strip_tz, convert_to_serializable, strip_descriptive_stats
 
-from dbconnect import connect_server, query_db, update_db
+from dbconnect import connect_server, query_db, query_db_agg, update_db
 
 from api.dev_only import router as dev_router
 
@@ -219,6 +222,7 @@ async def scrape_letterboxd_list(
           movie_history = {
             **film_data,
             '_id': Binary.from_uuid(movie_history_id),
+            'list_id': history_id,
             'film_id': film_id,
             'created_at': movie_history_created_at,
           }
@@ -343,6 +347,54 @@ def scrape_movie(
 def update_movie(film_slug: str) -> Movie:
   # TODO: update movie metadata here
   return 
+
+
+@app.post('/movie-stats', tags=['movie'], summary="Fetch single film stat across entire DB")
+async def fetch_film_stat(
+    stat: MovieStatsQuery,
+    getCount: Annotated[bool, Query()] = None,
+    db: Annotated[AsyncIOMotorClient, Depends(get_database)] = None
+  ):
+  try:
+    await db.command('ping')
+  except Exception as e:
+    raise HTTPException(status_code=500, detail="Database connection error")
+  
+  available_keys = Movie.model_fields.keys()
+  stat = stat.model_dump()
+  query = stat['query']
+  agg_func = stat['agg_func'] if stat['agg_func'] is not None else None
+
+  # ex: cast = Christopher de Leon; director = Ishmael Bernal
+  pipeline = []
+  for item in query:
+    if item['field'] not in available_keys:
+      return HTTPException(status_code=400, detail=f"{stat} key not in model")
+    if item['field'] in ['film_id', 'film_slug', 'film_title']:
+      return HTTPException(status_code=403, detail="Selected key not permitted for fetching")
+    if item['eq'] is None:
+      raise HTTPException(status_code=406, detail="Equal value must be not null")
+
+
+    pipeline.append({
+      "$match": {
+        item['field']: {
+          "$eq": item['eq']
+        }
+      }
+    })
+  
+  if getCount is True:
+    pipeline.append({
+      "$count": "total_count"
+    })
+  
+  if agg_func and getCount is False:
+    agg_query = agg_ops_dict(agg_func['measure'], agg_func['field'])
+    pipeline.append(agg_query)
+  result = await query_db_agg(db, pipeline, 'movie', 100)
+
+  return result
 
 @app.get('/list-history', tags=['letterboxd-list'], summary="Fetch stored list-history item")
 async def parse_list(id: int, db: Annotated[AsyncIOMotorClient, Depends(get_database)], fetch_movies: bool = False) -> ListHistory:

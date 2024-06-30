@@ -53,6 +53,12 @@ async def query_db(client: AsyncIOMotorClient, query: dict, collection: str, lim
   obj = [doc for doc in documents]
   return obj
 
+async def query_db_agg(client: AsyncIOMotorClient, pipeline: dict, collection: str, limit: int = 1) -> list:
+  collection = client.get_collection(collection)
+  documents = await collection.aggregate(pipeline).to_list(limit)
+  obj = [doc for doc in documents]
+  return obj
+
 async def update_db(client: AsyncIOMotorClient, document: dict, collection: str):
   collection = client.get_collection(collection)
   collection.insert_one(document)
