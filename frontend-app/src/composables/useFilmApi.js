@@ -45,6 +45,32 @@ export async function fetchMovie(id) {
 }
 
 
+export async function fetchMovieAgg(fields, getCount = false, agg_func = {}) {
+  try {
+    const config = useRuntimeConfig();
+    const apiUrl = config?.public?.apiUrl;
+
+    const queryParam = {
+      getCount
+    }
+    const requestBody = {
+      "query": fields,
+      ...(agg_func && !isEmpty(agg_func) ? { agg_func } : {} )
+    }
+
+    const response = await $fetch(`${apiUrl}/movie-stats`, {
+      method: 'POST',
+      query: queryParam,
+      body: requestBody
+    })
+
+    return response
+  } catch (error) {
+    console.error("Error fetching response:", error)
+    throw new Error("Failed to fetch aggregate data")
+  }
+}
+
 // export async function fetchMovie(id) {
 //   try {
 

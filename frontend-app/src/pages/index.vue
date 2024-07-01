@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col justify-center gap-2">
+  <div class="flex flex-col gap-2 mx-auto w-[75%]">
     <span class="font-weight-500 text-3xl font-proportional text-center pt-4">Top 250 Filipino Movies Dashboard</span>
     <span class="font-weight-300 text-xl font-tabular text-center">A Simple Dashboard by Jay</span>
             

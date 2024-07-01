@@ -92,6 +92,17 @@
         </template>
       </Suspense>
     </div>
+    
+    <div class="flex flex-col gap-6 pt-12">
+      <Suspense>
+        <template #default>
+          <RickyLee />
+        </template>
+        <template #fallback>
+          <ProgressSpinner class="bg-white" />
+        </template>
+      </Suspense>
+    </div>
 
       
     <pre>
@@ -116,10 +127,11 @@ import Badge from 'primevue/badge';
 import Card from 'primevue/card';
 import ProgressSpinner from 'primevue/progressspinner';
 
-import MostReviewed from './dashboard-widgets/mostReviewed';
-import MostViewed from './dashboard-widgets/mostViewed';
-import MostLiked from './dashboard-widgets/mostLiked'
-import UnratedMovies from './dashboard-widgets/unratedMovies'
+import MostReviewed from './dashboard-widgets/MostReviewed';
+import MostViewed from './dashboard-widgets/MostViewed';
+import MostLiked from './dashboard-widgets/MostLiked'
+import RickyLee from './dashboard-widgets/RickyLee'
+import UnratedMovies from './dashboard-widgets/UnratedMovies'
 import Footer from './dashboard-widgets/Footer'
 
 export default {
@@ -139,6 +151,7 @@ export default {
 	  MostViewed,
     MostLiked,
     UnratedMovies,
+    RickyLee,
     Footer
   },
   async setup (props, { emit }) {
