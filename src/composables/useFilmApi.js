@@ -1,5 +1,5 @@
 import { useRuntimeConfig } from '#app'
-import { cloneDeep } from 'lodash'
+import { cloneDeep, isEmpty } from 'lodash'
 
 /**
  * Fetches the most recent list history
@@ -45,22 +45,18 @@ export async function fetchMovie(id) {
 }
 
 
-export async function fetchMovieAgg(fields, getCount = false, agg_func = {}) {
+export async function fetchMovieAgg(fields) {
   try {
     const config = useRuntimeConfig();
     const apiUrl = config?.public?.apiUrl;
 
-    const queryParam = {
-      getCount
-    }
     const requestBody = {
       "query": fields,
-      ...(agg_func && !isEmpty(agg_func) ? { agg_func } : {} )
+			// ...(agg_func && !isEmpty(agg_func) ? { agg_func } : {} )
     }
 
     const response = await $fetch(`${apiUrl}/movie-stats`, {
       method: 'POST',
-      query: queryParam,
       body: requestBody
     })
 

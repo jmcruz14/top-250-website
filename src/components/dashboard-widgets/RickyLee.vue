@@ -62,24 +62,20 @@ export default {
     const avgRuntime = ref(null);
 
     onMounted(async () => {
-      const ricardoLeeWriter = [{
-        field: "writer",
-        eq: "Ricardo Lee"
-      }]
-      const ricardoLeeWriters = [{
-        field: "writers",
-        eq: "Ricardo Lee"
-      }]
+			const query = [
+				{
+					"$match": { 
+						"$or": [ {"writer": {"$eq": "Ricardo Lee"}}, {"writers": {"$eq": "Ricardo Lee"}} ]
+					}
+				}
+			]
+      const results = await fetchMovieAgg(query, false);
 
-      const singleWriter = await fetchMovieAgg(ricardoLeeWriter, false);
-      const multiWriter = await fetchMovieAgg(ricardoLeeWriters, false);
-      const allCreds = [...singleWriter, ...multiWriter]
-
-      totalCount.value = allCreds.length
-      percent.value = ((allCreds.length / 250) * 100).toPrecision(4);
-      avgRuntime.value = (allCreds.reduce((acc, film) => {
+      totalCount.value = results?.length
+      percent.value = ((totalCount?.value / 250) * 100).toPrecision(4);
+      avgRuntime.value = (results?.data?.reduce((acc, film) => {
         return acc += film?.runtime
-      }, 0) / allCreds.length).toPrecision(4);
+      }, 0) / totalCount.value).toPrecision(4);
     })
 
     

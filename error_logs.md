@@ -49,3 +49,7 @@ async def log_memory_usage(request: Request, call_next):
   
   return response
 ```
+
+- `unhashable type: dict / pydantic class`
+
+A Pydantic BaseClass is not hashable.

@@ -105,6 +105,13 @@ export const useStatistics = () => {
     }
   }
 
+  function runtime (data) {
+    const mins = chain(data)
+      .filter(i => i?.runtime)
+      .value()
+    return mins
+  }
+
   // PUT THRU AGGREGATE FUNCTION
   // function perDecade (data) {
   //   const decadeThresholds = d3.bin().thresholds([1950, 1960, 1970, 1980, 1990, 2000, 2010, 2020, 2030]);
