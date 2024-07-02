@@ -46,7 +46,6 @@ import { ref, onMounted, computed, toRefs } from 'vue';
 import Card from 'primevue/card'
 import Avatar from 'primevue/avatar';
 import { fetchMovieAgg } from '@/composables/useFilmApi';
-// import { useD3 } from '@/composables/useD3';
 
 export default {
   components: {
@@ -69,7 +68,7 @@ export default {
 					}
 				}
 			]
-      const results = await fetchMovieAgg(query, false);
+      const results = await fetchMovieAgg(query);
 
       totalCount.value = results?.length
       percent.value = ((totalCount?.value / 250) * 100).toPrecision(4);

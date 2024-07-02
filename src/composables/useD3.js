@@ -147,8 +147,76 @@ export const useD3 = () => {
       return svg.node();
     }
 
+  async function createScatterPlot (
+    data, xKey, yKey, 
+    pointColor = '#f1f5f9', xAxisTitle, chartTitle,
+    removeDomain = true,
+    elWidth = 900, elHeight = 500,
+    marginTop = 30, marginRight = 0, marginBottom = 30, marginLeft = 40,
+    chartWidth = 1000, chartHeight = 450,
+  ) {
+    const svg = d3.create('svg')
+        .attr("width", elWidth)
+        .attr("height", elHeight)
+        .attr("viewBox", [0, 0, elWidth, elHeight])
+        .attr("style", "max-width: 100%; height: auto;");
+    
+    // Generate x-scale
+    const x = d3.scaleLinear()
+      .domain([0, d3.max(data, (d) => d[xKey])])
+      .range([marginLeft, chartWidth - marginRight])
+
+    // Generate y-scale
+    const y = d3.scaleLinear()
+      .domain([0, d3.max(data, d => d[yKey])])
+      .range([chartHeight - marginBottom, marginTop])
+
+    // Add dots
+    svg.append('g')
+    .selectAll("dot")
+    .data(data)
+    .enter()
+    .append("circle")
+      .attr("cx", function (d) { return x(d[xKey]); } )
+      .attr("cy", function (d) { return y(d[yKey]); } )
+      .attr("r", 1.5)
+      .style("fill", pointColor)
+    
+     // Add x-axis
+     svg.append("g")
+     .attr("transform", `translate(0,${chartHeight - marginBottom})`)
+     .call(d3.axisBottom(x).tickSizeOuter(0))
+       .append("text")
+         .attr("x", 900 / 2)
+         .attr("y", 40)
+         .attr("class", 'font-tabular')
+         .attr("font-size", "12px")
+         .attr("fill", "currentColor")
+         .attr("text-anchor", "middle")
+         .text(xAxisTitle);
+   
+   // Add y-axis
+   svg.append("g")
+     .attr("transform", `translate(${marginLeft},0)`)
+     .call(d3.axisLeft(y).tickFormat((y) => (y).toFixed()))
+     .call(g => {
+       if (removeDomain) g.select(".domain").remove()
+     })
+     .call(g => g.append("text")
+         .attr("x", 0)
+         .attr("y", 15)
+         .attr("class", "font-proportional")
+         .attr("font-size", '18px')
+         .attr("fill", "currentColor")
+         .attr("text-anchor", "start")
+         .text(chartTitle));
+    
+    return svg.node()
+  }
+
   return {
-    createBarChart
+    createBarChart,
+    createScatterPlot
   }
 }
 

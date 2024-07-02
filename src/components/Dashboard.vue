@@ -104,6 +104,17 @@
       </Suspense>
     </div>
 
+    <div class="flex flex-col gap-6 pt-12">
+      <Suspense>
+        <template #default>
+          <Runtime />
+        </template>
+        <template #fallback>
+          <ProgressSpinner class="bg-white" />
+        </template>
+      </Suspense>
+    </div>
+
       
     <pre>
       {{ data }}
@@ -131,6 +142,7 @@ import MostReviewed from './dashboard-widgets/MostReviewed';
 import MostViewed from './dashboard-widgets/MostViewed';
 import MostLiked from './dashboard-widgets/MostLiked'
 import RickyLee from './dashboard-widgets/RickyLee'
+import Runtime from './dashboard-widgets/Runtime'
 import UnratedMovies from './dashboard-widgets/UnratedMovies'
 import Footer from './dashboard-widgets/Footer'
 
@@ -152,6 +164,7 @@ export default {
     MostLiked,
     UnratedMovies,
     RickyLee,
+    Runtime,
     Footer
   },
   async setup (props, { emit }) {
