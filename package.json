@@ -16,12 +16,16 @@
     "nuxt": "^3.11.2",
     "primeicons": "^7.0.0",
     "primevue": "^3.52.0",
+    "typescript": "^5.5.3",
     "vue": "^3.4.21",
     "vue-router": "^4.3.0",
     "ws": "8.17.1"
   },
   "devDependencies": {
     "@nuxtjs/tailwindcss": "^6.12.0",
+    "eslint": "9.x",
+    "eslint-plugin-vue": "^9.27.0",
+    "globals": "^15.8.0",
     "lodash": "^4.17.21",
     "nuxt-primevue": "^3.0.0"
   }
