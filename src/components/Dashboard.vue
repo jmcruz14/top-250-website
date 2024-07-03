@@ -78,7 +78,7 @@
     
     <!-- sad annoying statistics -->
     <div class="flex flex-col gap-6">
-      <span class="text-3xl font-proprtional ml-[150px]">Sad Numbers...</span>
+      <span class="text-3xl font-proprtional ml-[150px]">Some More Numbers...</span>
       <Suspense>
         <template #default>
           <UnratedMovies 
