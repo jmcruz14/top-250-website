@@ -32,7 +32,7 @@
             <span><b>{{ percent }}</b>% ({{ totalCount }} of 250) of films in the list are written by Ricky Lee.</span>
           </li>
           <li>
-            <span>His works run at an average of <b>{{ avgRuntime }}</b> mins.</span>
+            <span>The list currently has an average runtime of <b>{{ avgRuntime }}</b> mins.</span>
           </li>
         </ul>
       </template>

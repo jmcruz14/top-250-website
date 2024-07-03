@@ -1,5 +1,5 @@
 import * as d3 from 'd3';
-import { isNumber, chain } from 'lodash'
+import { isNumber, chain, merge } from 'lodash'
 
 export const useD3 = () => {
   /**
@@ -13,7 +13,7 @@ export const useD3 = () => {
    * @param {string} barColor - The color of the bars.
    * @param {string} xAxisTitle - The title for the x-axis.
    * @param {boolean} [removeDomain=true] - Whether to remove the domain line from the y-axis.
-   * @param {number} [elWidth=900] - The width of the SVG element.
+   * @param {number} [svgWidth=900] - The width of the SVG element.
    * @param {number} [elHeight=500] - The height of the SVG element.
    * @param {number} [marginTop=30] - The top margin for the chart.
    * @param {number} [marginRight=0] - The right margin for the chart.
@@ -214,9 +214,125 @@ export const useD3 = () => {
     return svg.node()
   }
 
+  async function createHistogram (
+    data, xBin, yKey, 
+    barColor = '#f1f5f9', xAxisTitle, chartTitle,
+    removeDomain = true,
+    svgWidth = 900, svgHeight = 500,
+    marginTop = 30, marginRight = 0, marginBottom = 30, marginLeft = 40,
+    chartWidth = 1000, chartHeight = 450,
+  ) {
+    const margin = {
+      top: marginTop,
+      right: marginRight,
+      left: marginLeft,
+      bottom: marginBottom
+    };
+    const width = svgWidth - (margin.left + margin.right);
+    const height = svgHeight - (margin.top + margin.bottom );
+
+    const svg = d3.create('svg')
+      .attr("width", svgWidth)
+      .attr("height", svgHeight)
+      .attr("viewBox", [0, 0, chartWidth, chartHeight])
+      .attr("style", "max-width: 100%; height: auto;")
+
+    // x-axis
+    const x = d3.scaleLinear()
+      .domain([60, d3.max(data, (d) => d[xBin]?.upper ? d[xBin]?.upper : d[xBin]?.lower )])
+      .range([margin.left, width - margin.right]);
+
+    const xAxis = d3.axisBottom(x)
+      .tickValues(data.map(d => d[xBin].lower))
+      .tickFormat((d, i) => i === xTickValues.length - 1 ? "infinity" : data[i]?._id);
+      
+    const xAxisGroup = svg.append("g")
+      .attr("transform", `translate(0,${chartHeight - 25})`)
+      .call(d3.axisBottom(x)
+          .tickSizeOuter(0)
+          .tickFormat( function (d) { return ( d === 180 ) ? '180+' : d})
+        )
+      .append("text")
+         .attr("x", 900 / 2)
+         .attr("y", 40)
+         .attr("class", 'font-tabular')
+         .attr("font-size", "12px")
+         .attr("fill", "currentColor")
+         .attr("text-anchor", "middle")
+         .text(xAxisTitle);
+    
+    xAxisGroup.selectAll('.tick line')
+      .filter((d, i, nodes) => i === nodes.length - 1) // Select the last tick line
+      .attr("x2", 100); // Extend the last tick line to the right by 10 units (adjust as needed)
+
+    // bins
+    const bins = d3.bin()
+      .thresholds(data?.length)
+      .value((d) => d[xBin]?.lower) // just selects how to split data based on values 
+    const histogram = bins(data).map(bin => {
+      const flattenedBin = {
+        x0: bin.x0,
+        x1: bin.x1,
+      };
+      if (bin.length > 0) {
+        Object.assign(flattenedBin, bin[0])
+      } else {
+        Object.assign(flattenedBin, {
+          count: 0,
+          _id: `${flattenedBin.x0}-${flattenedBin.x1}`
+        })
+      }
+      return flattenedBin
+    })
+    
+    // y-axis
+    const y = d3.scaleLinear()
+      .domain([0, d3.max(histogram, d => d.count)])
+      .range([height - margin.bottom, margin.top])
+
+    svg.append("g")
+      .attr("transform", `translate(${margin.left},0)`)
+      .call(d3.axisLeft(y))
+      .call(g => {
+        if (removeDomain) g.select(".domain").remove()
+        // g.append("text")
+        //   .attr("y", height / 2)
+        //   .attr("x", -marginLeft - 5)
+        //   .attr("class", "font-tabular")
+        //   .attr("font-size", '18px')
+        //   .attr("fill", "currentColor")
+        //   .attr("text-anchor", "start")
+        //   .attr("transform", `rotate(${marginLeft},${height/4},180)`)
+        //   .text("Count")
+      })
+      .call(g => g.append("text")
+          .attr("x", 0)
+          .attr("y", -2.5)
+          .attr("class", "font-proportional")
+          .attr("font-size", '24px')
+          .attr("fill", "currentColor")
+          .attr("text-anchor", "start")
+          .text(chartTitle));
+    
+    // append all rectangles to svg element
+    svg.selectAll("rect")
+      .data(histogram)
+      .enter()
+      .append("rect")
+      .attr("x", d => x(d.x0))
+      .attr("y", d => y(d.count))
+      .attr("width", d => x(d.x1) - x(d.x0) - 1)
+      .attr("height", d => height - margin.bottom - y(d.count))
+      .style("fill", barColor);
+    
+    return svg.node()
+    // create histogram here
+  }
+
   return {
     createBarChart,
-    createScatterPlot
+    createScatterPlot,
+    createHistogram,
   }
 }
 
