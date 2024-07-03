@@ -5,10 +5,12 @@
       <div class="col-span-1 flex flex-col gap-2 justify-center">
         <span class="font-proportional font-weight-700 text-2xl">About</span>
         <p class="font-tabular">
-          This dashboard was conceptualized and slowly worked on starting in 2022
-          as an excuse to explore Data Analysis on my own Letterboxd list. Considering
-          the obstacles and challenges faced, I'm very satisfied that I was able to make
-          time to show this off to you all.
+          This dashboard serves to track changes in film data regarding the
+          Top 250 Filipino Movies on Letterboxd.
+        </p>
+        <p class="font-tabular">
+          Made 100% free, and for non-commercial purposes. (Also an exercise in using
+          MongoDB, FastAPI, and Vue.js together, for the dev nerds out there.)
         </p>
       </div>
       <Card
@@ -115,10 +117,11 @@
       </Suspense>
     </div>
 
-      
-    <pre>
-      {{ data }}
-    </pre>
+    <hr class="my-6">
+    <p class="font-tabular mt-6">
+      <b>Note:</b> This isn't the end of the visual dashboard. More updates and additional
+      metrics to incorporate in the future!
+    </p>
 
     <Footer />
   </div>
