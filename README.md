@@ -1,3 +1,7 @@
+> [!WARNING]  
+> Vercel link currently does not function as the API is currently undergoing production deployment attempts. API seems
+> to be too big to be hosted serverless without incurring any extra costs from my end. Woops!
+
 # top-250-website
 Website-hosted dashboard showing analysis of the Top 250 Filipino Movies of all time.
 
